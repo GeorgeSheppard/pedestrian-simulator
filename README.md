@@ -31,8 +31,15 @@ The details come from photos of the junction:
   fitted to each from `building:levels`: London stock and red brick terraces with white sash
   windows, white stucco, slate mansards with dormers, and parapets and plant on flat roofs. Boots,
   across the crossing, has its navy fascia.
+- **Landmarks** around the junction have their own looks: Regal House, opposite the station, with
+  the living wall planted on it in 2017 (dark bronze window columns and box windows with planted
+  trays, through planting that spills over the top); Russell & Bromley's Portland stone corner on
+  Neal Street; Odhams Walk's dark brown brick, with the big London plane in front of it on Long
+  Acre. OpenStreetMap draws a couple of these as one outline with their neighbours, so the import
+  splits them where the real buildings meet.
 - **The streets** have York stone pavements, granite setts on James Street and Neal Street, Neal
-  Street's black bollards, Westminster bins, the station's map board, and pedicabs waiting outside.
+  Street's black bollards, Westminster bins, the station's map board, timber planters of shrubs and
+  flowers at Regal House's corner, and pedicabs waiting outside.
 
 Add `?view=x,y,z,targetX,targetY,targetZ` to the URL to open the scene at a particular camera
 position and target, in metres, to share an angle.

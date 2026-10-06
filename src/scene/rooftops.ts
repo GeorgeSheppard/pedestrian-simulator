@@ -12,7 +12,11 @@ const ROOF_PER_ITEM = 40;
  * Plant rooms, air-conditioning units, chimney stacks and glazed rooflights scattered over a
  * flat roof, kept clear of its edges and of each other.
  */
-export function rooftopClutter(building: Building, random: () => number): Box[] {
+export function rooftopClutter(
+  building: Building,
+  random: () => number,
+  kit: readonly string[] = rooftopKit
+): Box[] {
   const xs = building.footprint.map((p) => p[0]);
   const zs = building.footprint.map((p) => p[1]);
   const [minX, maxX, minZ, maxZ] = [
@@ -56,7 +60,7 @@ export function rooftopClutter(building: Building, random: () => number): Box[] 
           ? colours.chimney
           : kind === 'rooflight'
             ? colours.rooflight
-            : pick(rooftopKit, random()),
+            : pick(kit, random()),
     });
   }
   return boxes;

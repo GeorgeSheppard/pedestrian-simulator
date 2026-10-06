@@ -1,9 +1,13 @@
+import { useMemo } from 'react';
 import { RoundedBox } from '@react-three/drei';
 import type { Road } from '@/data/area';
 import { area } from '@/data/area';
 import type { Vec2 } from '@/sim/network';
-import { besideRoad, isBlocked } from './geometry';
-import { colours } from './palette';
+import { type Clump, Clumps } from './Foliage';
+import { besideRoad, faces, isBlocked, onFace } from './geometry';
+import { colours, flowers, leaves } from './palette';
+import { pick, seeded } from './random';
+import { PlaneTree } from './Trees';
 
 const LAMP_SPACING = 16;
 const LAMP_HEIGHT = 5.2;
@@ -50,9 +54,44 @@ const lamps = [
   ...alongStreets(carriageways, LAMP_SPACING, (r) => r.width / 2 + 0.8, 0.5),
   ...alongStreets(pedestrianStreets, LAMP_SPACING, (r) => r.width / 2 - 0.6, 0.5),
 ];
+/**
+ * Street trees: photos show London planes further down James Street towards the market, and up
+ * Neal Street, but none right outside the station.
+ */
 const trees = alongStreets(pedestrianStreets, 11, (r) => r.width / 2 - 1.6, 1.4).filter(
-  (_, i) => i % 2 === 0
+  ({ position: [, z] }, i) => i % 2 === 0 && (z > 20 || z < -22)
 );
+
+/**
+ * The big London plane on the corner of Long Acre and Neal Street, in front of Odhams Walk,
+ * diagonally opposite the station.
+ */
+const cornerPlane = (() => {
+  const odhams = area.buildings.find((b) => b.name === 'Odhams Walk');
+  if (!odhams) return null;
+  // Its south-west corner, where it meets Long Acre and Neal Street.
+  const corner = odhams.footprint.reduce((best, p) =>
+    p[0] + -p[1] * 0.3 < best[0] + -best[1] * 0.3 ? p : best
+  );
+  const spot: Vec2 = [corner[0] + 2.8, corner[1] + 3.2];
+  return isBlocked(spot, 0.5) ? null : spot;
+})();
+
+/** Timber planters of shrubs and flowers, round Regal House's corner, as in photos of it. */
+const planterSpots = (() => {
+  const regal = area.buildings.find((b) => b.name === 'Regal House');
+  if (!regal) return [];
+  return faces(regal.footprint)
+    .filter((f) => f.street && f.length > 6)
+    .flatMap((face) => {
+      // Start from whichever end of the wall is the street corner nearest the station.
+      const fromCorner =
+        Math.hypot(face.from[0], face.from[1]) < Math.hypot(face.to[0], face.to[1]);
+      return [1.6, 5].map((d) => onFace(face, fromCorner ? d : face.length - d, 1.3));
+    })
+    .filter((p) => !isBlocked(p, 0.6));
+})();
+
 /** Neal Street is lined with black cast-iron bollards along both sides. */
 const nealStreetBollards = alongStreets(
   pedestrianStreets.filter((r) => r.name === 'Neal Street'),
@@ -88,8 +127,8 @@ const pedicabs = (jamesStreet.length > 1 ? [0.25, 0.55] : [])
   .filter((spot) => spot !== null);
 
 /**
- * Street furniture and traffic: lamps, trees, bollards, bins, a phone box, pedicabs, a cab and a
- * van.
+ * Street furniture and traffic: lamps, trees, planters, bollards, bins, a phone box, pedicabs, a
+ * cab and a van.
  */
 export function Props() {
   const longAcre = carriageways;
@@ -110,7 +149,11 @@ export function Props() {
         <Lamp key={position.join()} position={position} />
       ))}
       {trees.map(({ position }, i) => (
-        <Tree key={position.join()} position={position} scale={0.85 + (i % 3) * 0.15} />
+        <PlaneTree key={position.join()} position={position} height={7.5 + (i % 3) * 1.2} />
+      ))}
+      {cornerPlane && <PlaneTree position={cornerPlane} height={16} />}
+      {planterSpots.map((position, i) => (
+        <Planter key={position.join()} position={position} seed={i} />
       ))}
       <Bollards />
       {nealStreetBollards.map(({ position }) => (
@@ -159,25 +202,6 @@ function Lamp({ position }: { position: Vec2 }) {
       <mesh position={[0, LAMP_HEIGHT + 0.62, 0]} castShadow>
         <coneGeometry args={[0.3, 0.3, 6]} />
         <meshStandardMaterial color={colours.lamp} roughness={0.4} />
-      </mesh>
-    </group>
-  );
-}
-
-function Tree({ position, scale }: { position: Vec2; scale: number }) {
-  return (
-    <group position={[position[0], 0, position[1]]} scale={scale}>
-      <mesh position={[0, 0.25, 0]} castShadow receiveShadow>
-        <boxGeometry args={[1.3, 0.5, 1.3]} />
-        <meshStandardMaterial color={colours.lamp} roughness={0.5} />
-      </mesh>
-      <mesh position={[0, 1.6, 0]} castShadow>
-        <cylinderGeometry args={[0.08, 0.12, 2.4, 6]} />
-        <meshStandardMaterial color={colours.trunk} roughness={0.8} />
-      </mesh>
-      <mesh position={[0, 3.3, 0]} castShadow receiveShadow>
-        <icosahedronGeometry args={[1.25, 1]} />
-        <meshStandardMaterial color={colours.foliage} roughness={0.8} flatShading />
       </mesh>
     </group>
   );
@@ -400,6 +424,51 @@ function Pedicab({
           </mesh>
         ))
       )}
+    </group>
+  );
+}
+
+/** A square timber planter, planted with shrubs and a few flowers. */
+function Planter({ position, seed }: { position: Vec2; seed: number }) {
+  const clumps = useMemo(() => {
+    const random = seeded(`planter ${seed}`);
+    const clumps: Clump[] = [];
+    for (let i = 0; i < 6; i++) {
+      clumps.push({
+        position: [
+          position[0] + (random() - 0.5) * 0.9,
+          0.95 + random() * 0.45,
+          position[1] + (random() - 0.5) * 0.9,
+        ],
+        radius: 0.3 + random() * 0.2,
+        colour: pick(leaves, random()),
+      });
+    }
+    for (let i = 0; i < 8; i++) {
+      clumps.push({
+        position: [
+          position[0] + (random() - 0.5) * 1,
+          1.3 + random() * 0.4,
+          position[1] + (random() - 0.5) * 1,
+        ],
+        radius: 0.09 + random() * 0.05,
+        colour: pick(flowers, random()),
+      });
+    }
+    return clumps;
+  }, [position, seed]);
+
+  return (
+    <group>
+      <mesh position={[position[0], 0.45, position[1]]} castShadow receiveShadow>
+        <boxGeometry args={[1.3, 0.9, 1.3]} />
+        <meshStandardMaterial color="#3d352e" roughness={0.7} />
+      </mesh>
+      <mesh position={[position[0], 0.92, position[1]]}>
+        <boxGeometry args={[1.38, 0.06, 1.38]} />
+        <meshStandardMaterial color="#5a4e43" roughness={0.6} />
+      </mesh>
+      <Clumps clumps={clumps} />
     </group>
   );
 }

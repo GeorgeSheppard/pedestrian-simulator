@@ -8,6 +8,7 @@ import { Effects } from './Effects';
 import { Ground } from './Ground';
 import { Pedestrians } from './Pedestrians';
 import { Props } from './Props';
+import { LivingWall } from './LivingWall';
 import { Station } from './Station';
 import { colours } from './palette';
 
@@ -81,6 +82,7 @@ export function Scene() {
       <Props />
       <Pedestrians />
       <Station />
+      <LivingWall />
 
       {/* A soft shadow under the plinth, as if it were standing on a table. */}
       <ContactShadows

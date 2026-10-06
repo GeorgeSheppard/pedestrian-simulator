@@ -5,8 +5,10 @@ import { colours } from './palette';
 /**
  * The kinds of facade around the junction, as seen in photos of it: sooty yellow London stock
  * brick and red brick terraces with white sash windows, white stucco, and pale Portland stone.
+ * A few landmarks have their own: Regal House's living wall, Russell & Bromley's stone with fluted
+ * pilasters, and Odhams Walk's dark brown 1970s brick.
  */
-export type FacadeStyle = 'stock' | 'red' | 'stucco' | 'stone';
+export type FacadeStyle = 'stock' | 'red' | 'stucco' | 'stone' | 'living' | 'deco' | 'odhams';
 
 export interface Facade {
   style: FacadeStyle;
@@ -19,14 +21,27 @@ const FACADES: Record<FacadeStyle, { wall: string; trim: string; bay: number }> 
   red: { wall: '#a6533c', trim: '#d8d2c6', bay: 2.6 },
   stucco: { wall: '#eee8dc', trim: '#dcd4c4', bay: 2.8 },
   stone: { wall: '#ddd4c1', trim: '#cbc1ab', bay: 3 },
+  living: { wall: '#4f6b35', trim: '#3a2f28', bay: 2.8 },
+  deco: { wall: '#e8e2d4', trim: '#d6cfbf', bay: 3.2 },
+  odhams: { wall: '#6a4536', trim: '#b9b2a4', bay: 3.4 },
+};
+
+/** Landmarks that photos show have a look of their own, by name. */
+const LANDMARK_STYLES: Record<string, FacadeStyle> = {
+  'Regal House': 'living',
+  'Russell & Bromley': 'deco',
+  'Odhams Walk': 'odhams',
+  Boots: 'red',
 };
 
 /** Picks a facade for a building from what OpenStreetMap says it's made of, or from its id. */
 export function facadeFor(building: Building, random: () => number): Facade {
   const material = building.material;
   const colour = building.colour;
+  const landmark = building.name ? LANDMARK_STYLES[building.name] : undefined;
   let style: FacadeStyle;
-  if (material === 'plaster' || colour === 'white') style = 'stucco';
+  if (landmark) style = landmark;
+  else if (material === 'plaster' || colour === 'white') style = 'stucco';
   else if (material === 'sandstone' || material === 'stone') style = 'stone';
   else if (colour === 'brown' || colour === 'light_brown') style = 'stock';
   else if (material === 'brick') style = random() < 0.55 ? 'red' : 'stock';
@@ -79,6 +94,29 @@ function speckle(context: CanvasRenderingContext2D, size: number, base: string, 
     const shade = random() < 0.5 ? 0 : 255;
     context.fillStyle = `rgba(${shade}, ${shade}, ${shade}, ${random() * amount})`;
     context.fillRect(Math.floor(random() * size), Math.floor(random() * size), 2, 1);
+  }
+}
+
+/** A living wall: overlapping leaves in many greens, with a few flowers of red, pink and mauve. */
+function foliage(context: CanvasRenderingContext2D, size: number) {
+  context.fillStyle = '#3f5a2c';
+  context.fillRect(0, 0, size, size);
+  let seed = 19;
+  const random = () => {
+    seed = (seed * 16807) % 2147483647;
+    return seed / 2147483647;
+  };
+  const leaves = ['#4f6f33', '#5d7f3a', '#6f8f45', '#3d5a2a', '#7a9a4f', '#58753a', '#86a35a'];
+  for (let i = 0; i < 900; i++) {
+    context.fillStyle = leaves[Math.floor(random() * leaves.length)]!;
+    context.beginPath();
+    context.arc(random() * size, random() * size, 1.5 + random() * 3, 0, Math.PI * 2);
+    context.fill();
+  }
+  const flowers = ['#c4425a', '#d77fa1', '#8c5a9e', '#e2a43b'];
+  for (let i = 0; i < 40; i++) {
+    context.fillStyle = flowers[Math.floor(random() * flowers.length)]!;
+    context.fillRect(random() * size, random() * size, 2, 2);
   }
 }
 
@@ -148,6 +186,49 @@ export function facadeTexture(style: FacadeStyle, storey: number): CanvasTexture
         context.fillStyle = trim;
         context.fillRect(x - 7, y - 10, w + 14, 4);
         sashWindow(context, window, '#f7f5f0');
+      } else if (style === 'living') {
+        // Just the planting: the windows are modelled in 3D, in LivingWall.
+        foliage(context, size);
+      } else if (style === 'deco') {
+        speckle(context, size, wall, 0.05);
+        // Fluted pilasters either side, and a big black-framed window between them.
+        context.fillStyle = 'rgba(0, 0, 0, 0.09)';
+        for (let i = 0; i < 4; i++) {
+          context.fillRect(size * 0.03 + i * 4, 0, 1, size);
+          context.fillRect(size * 0.97 - i * 4, 0, 1, size);
+        }
+        context.fillStyle = trim;
+        context.fillRect(size * 0.18, size * 0.12, size * 0.64, size * 0.7);
+        context.fillStyle = '#25272a';
+        context.fillRect(size * 0.2, size * 0.14, size * 0.6, size * 0.66);
+        const glass = context.createLinearGradient(0, size * 0.16, 0, size * 0.78);
+        glass.addColorStop(0, colours.windowSky);
+        glass.addColorStop(0.4, colours.window);
+        glass.addColorStop(1, '#36424f');
+        context.fillStyle = glass;
+        context.fillRect(size * 0.22, size * 0.16, size * 0.56, size * 0.62);
+        context.fillStyle = '#25272a';
+        context.fillRect(size * 0.49, size * 0.16, 3, size * 0.62);
+        context.fillRect(size * 0.22, size * 0.36, size * 0.56, 2);
+        // A carved panel under the window.
+        context.fillStyle = 'rgba(0, 0, 0, 0.1)';
+        context.fillRect(size * 0.4, size * 0.88, size * 0.2, 3);
+      } else if (style === 'odhams') {
+        speckle(context, size, wall, 0.14);
+        courses(context, size);
+        // A plain, wide modern window with a concrete sill band.
+        context.fillStyle = '#2b2a2a';
+        context.fillRect(size * 0.16, size * 0.22, size * 0.68, size * 0.5);
+        const glass = context.createLinearGradient(0, size * 0.24, 0, size * 0.7);
+        glass.addColorStop(0, colours.windowSky);
+        glass.addColorStop(0.5, colours.window);
+        glass.addColorStop(1, '#36424f');
+        context.fillStyle = glass;
+        context.fillRect(size * 0.18, size * 0.24, size * 0.64, size * 0.46);
+        context.fillStyle = '#2b2a2a';
+        context.fillRect(size * 0.49, size * 0.24, 2, size * 0.46);
+        context.fillStyle = trim;
+        context.fillRect(0, size * 0.74, size, 5);
       } else {
         speckle(context, size, wall, 0.06);
         context.fillStyle = 'rgba(0, 0, 0, 0.05)';

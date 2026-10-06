@@ -50,6 +50,17 @@ export interface Box {
   colour: string;
 }
 
+/** Shopfronts that photos show for the landmarks: a painted fascia between pilasters. */
+const LANDMARK_SHOPFRONTS: Record<string, { fascia: string; pilaster: string }> = {
+  Boots: { fascia: colours.boots, pilaster: '#e3dccd' },
+  'Regal House': { fascia: '#1c1d1f', pilaster: '#2b2c2f' },
+  'Russell & Bromley': { fascia: '#f2efe8', pilaster: '#e3dccd' },
+  'Odhams Walk': { fascia: '#2b2a2a', pilaster: '#6a4536' },
+};
+
+/** Planters and shrubs, for roof terraces. */
+const planters = ['#5f7f3d', '#6f8f45', '#4f6b35', '#7d6a55'];
+
 /** Every building but the station, which is modelled on its own in Station.tsx. */
 const buildings = area.buildings.filter((b) => b.kind !== 'train_station');
 
@@ -66,11 +77,12 @@ export function Buildings() {
     const boxes: Box[] = [];
     const meshes = buildings.map((building): BuildingMesh => {
       const random = seeded(building.id);
-      const boots = housesBoots(building);
-      const facade = boots ? { style: 'red' as const } : facadeFor(building, random);
+      const facade = facadeFor(building, random);
+      const landmark = building.name ? LANDMARK_SHOPFRONTS[building.name] : undefined;
       // Mansards are pulled in from the walls, which folds them in on themselves on small or
-      // notched footprints, so those get flat roofs.
+      // notched footprints, so those get flat roofs. So do the landmarks, as in photos of them.
       const mansard =
+        !landmark &&
         polygonArea(building.footprint) > MANSARD_MIN_AREA &&
         convexity(building.footprint) > 0.94 &&
         random() < 0.5;
@@ -90,13 +102,14 @@ export function Buildings() {
         roughness: facade.style === 'stucco' ? 0.5 : 0.75,
       });
 
-      const fascia = boots ? colours.boots : pick(fascias, random());
-      const shopfrontKey = `${fascia} ${boots}`;
+      const fascia = landmark?.fascia ?? pick(fascias, random());
+      const pilaster = landmark?.pilaster ?? fascia;
+      const shopfrontKey = `${fascia} ${pilaster}`;
       if (!shopfronts.has(shopfrontKey)) {
         shopfronts.set(
           shopfrontKey,
           new MeshStandardMaterial({
-            map: createShopfrontTexture(fascia, boots ? '#e3dccd' : fascia),
+            map: createShopfrontTexture(fascia, pilaster),
             roughness: 0.4,
           })
         );
@@ -104,7 +117,10 @@ export function Buildings() {
 
       if (!mansard) {
         boxes.push(...parapets(building, facade.style));
-        boxes.push(...rooftopClutter(building, random));
+        // Odhams Walk's roofs are terraces, planted up.
+        boxes.push(
+          ...rooftopClutter(building, random, facade.style === 'odhams' ? planters : undefined)
+        );
       }
 
       return {
@@ -218,13 +234,6 @@ function parapets(building: Building, style: FacadeStyle): Box[] {
   });
 }
 
-/** Whether this is the building with Boots on the ground floor, across the crossing. */
-function housesBoots(building: Building): boolean {
-  return area.places.some(
-    (p) => p.name === 'Boots' && insidePolygon(p.position, building.footprint)
-  );
-}
-
 /**
  * A slate mansard roof sitting on walls `wallHeight` high. Pulling the bevel inwards turns it into
  * a slope from the top of the walls up to a flat top, set back from the edges. The matching slope
@@ -276,10 +285,11 @@ function createShopfrontTexture(fascia: string, pilaster: string): CanvasTexture
     (context, size) => {
       context.fillStyle = pilaster;
       context.fillRect(0, 0, size, size);
-      // The fascia, with a pale strip where the shop's name would be.
+      // The fascia, with a strip where the shop's name would be: pale on a dark fascia, dark on a
+      // pale one.
       context.fillStyle = fascia;
       context.fillRect(size * 0.04, size * 0.06, size * 0.92, size * 0.17);
-      context.fillStyle = 'rgba(255, 255, 255, 0.5)';
+      context.fillStyle = isPale(fascia) ? 'rgba(0, 0, 0, 0.55)' : 'rgba(255, 255, 255, 0.5)';
       context.fillRect(size * 0.18, size * 0.12, size * 0.64, size * 0.05);
       // Display window and door, lit from inside.
       const glass = context.createLinearGradient(0, size * 0.28, 0, size);
@@ -296,4 +306,10 @@ function createShopfrontTexture(fascia: string, pilaster: string): CanvasTexture
     },
     [SHOPFRONT_BAY, SHOPFRONT_HEIGHT]
   );
+}
+
+function isPale(colour: string): boolean {
+  const value = parseInt(colour.slice(1), 16);
+  const [r, g, b] = [(value >> 16) & 255, (value >> 8) & 255, value & 255];
+  return 0.299 * r + 0.587 * g + 0.114 * b > 160;
 }

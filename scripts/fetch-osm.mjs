@@ -176,6 +176,49 @@ function isOutdoors(tags) {
   return true;
 }
 
+/**
+ * Corrections from photos of the junction. OpenStreetMap draws some neighbouring buildings as one
+ * outline, so split them where the real buildings meet: each part keeps the points on its side of
+ * the line where `normal · point = offset`, and gets its own name.
+ */
+const SPLITS = [
+  // Regal House, with its living wall, on the corner of Long Acre and James Street, and its
+  // neighbours further down James Street.
+  { id: 'way/173544662', normal: [0, 1], offset: 17, names: ['Regal House', undefined] },
+  // Boots, across the crossing from the station, and Russell & Bromley's stone corner on Neal Street.
+  { id: 'way/186337095', normal: [1, 0], offset: 13, names: ['Boots', 'Russell & Bromley'] },
+];
+/** Names for unnamed buildings that photos show are landmarks. */
+const NAMES = {
+  'way/173544239': 'Odhams Walk',
+  'way/1492122497': 'Odhams Walk',
+  'way/173544281': 'Odhams Walk',
+};
+
+/** The part of a polygon where `normal · point <= offset`, by Sutherland–Hodgman. */
+function clipHalfPlane(points, normal, offset) {
+  const side = (p) => normal[0] * p[0] + normal[1] * p[1] - offset;
+  const out = [];
+  points.forEach((current, i) => {
+    const previous = points[(i + points.length - 1) % points.length];
+    const [a, b] = [side(previous), side(current)];
+    const cross = () => {
+      const t = a / (a - b);
+      return [
+        previous[0] + (current[0] - previous[0]) * t,
+        previous[1] + (current[1] - previous[1]) * t,
+      ];
+    };
+    if (b <= 0) {
+      if (a > 0) out.push(cross());
+      out.push(current);
+    } else if (a <= 0) {
+      out.push(cross());
+    }
+  });
+  return out;
+}
+
 const buildings = [];
 for (const element of elements) {
   const tags = element.tags ?? {};
@@ -191,16 +234,39 @@ for (const element of elements) {
     if (ring.length > 1 && ring[0].join() === ring.at(-1).join()) ring.pop();
     const footprint = clipPolygon(ring);
     if (footprint.length < 3) continue;
-    buildings.push({
-      id: `${element.type}/${element.id}`,
-      name: tags.name,
-      kind: tags.building,
-      height: round(buildingHeight(tags)),
-      levels: parseInt(tags['building:levels'], 10) || undefined,
-      material: tags['building:material'],
-      colour: tags['building:colour'],
-      footprint: footprint.map(([x, z]) => [round(x), round(z)]),
-    });
+    const id = `${element.type}/${element.id}`;
+    const split = SPLITS.find((x) => x.id === id);
+    const parts = split
+      ? [
+          {
+            id: `${id}/a`,
+            name: split.names[0],
+            points: clipHalfPlane(footprint, split.normal, split.offset),
+          },
+          {
+            id: `${id}/b`,
+            name: split.names[1],
+            points: clipHalfPlane(
+              footprint,
+              split.normal.map((n) => -n),
+              -split.offset
+            ),
+          },
+        ]
+      : [{ id, name: tags.name ?? NAMES[id], points: footprint }];
+    for (const part of parts) {
+      if (part.points.length < 3) continue;
+      buildings.push({
+        id: part.id,
+        name: part.name,
+        kind: tags.building,
+        height: round(buildingHeight(tags)),
+        levels: parseInt(tags['building:levels'], 10) || undefined,
+        material: tags['building:material'],
+        colour: tags['building:colour'],
+        footprint: part.points.map(([x, z]) => [round(x), round(z)]),
+      });
+    }
   }
 }
 

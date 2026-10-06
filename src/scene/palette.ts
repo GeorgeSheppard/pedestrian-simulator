@@ -68,3 +68,8 @@ export const clothes = [
 ];
 
 export const skin = ['#f1d0b5', '#e2b48f', '#c68f66', '#8d5a3b', '#5e3a26'];
+
+/** Leaf greens, from shady to sunlit. */
+export const leaves = ['#4b6a30', '#5a7d37', '#6b8d42', '#3f5c2a', '#7a9a4c', '#86a656'];
+/** Flowers among the leaves: red, pink, mauve and a little yellow. */
+export const flowers = ['#c4425a', '#d77fa1', '#8c5a9e', '#e2a43b', '#f0f0ea'];
