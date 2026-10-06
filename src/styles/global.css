@@ -1,0 +1,13 @@
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  overscroll-behavior: none;
+  background: #eef1f4;
+}
+
+body {
+  -webkit-tap-highlight-color: transparent;
+}
