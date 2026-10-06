@@ -6,6 +6,12 @@ export interface Building {
   name?: string;
   kind: string;
   height: number;
+  /** Storeys above ground, when OpenStreetMap knows. */
+  levels?: number;
+  /** What the facade is made of, when known: brick, plaster, sandstone and so on. */
+  material?: string;
+  /** The facade's colour, when known: a name like brown or white, or a hex colour. */
+  colour?: string;
   footprint: Vec2[];
 }
 

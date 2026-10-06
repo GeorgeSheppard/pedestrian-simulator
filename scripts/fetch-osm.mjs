@@ -196,6 +196,9 @@ for (const element of elements) {
       name: tags.name,
       kind: tags.building,
       height: round(buildingHeight(tags)),
+      levels: parseInt(tags['building:levels'], 10) || undefined,
+      material: tags['building:material'],
+      colour: tags['building:colour'],
       footprint: footprint.map(([x, z]) => [round(x), round(z)]),
     });
   }

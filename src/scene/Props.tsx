@@ -53,8 +53,44 @@ const lamps = [
 const trees = alongStreets(pedestrianStreets, 11, (r) => r.width / 2 - 1.6, 1.4).filter(
   (_, i) => i % 2 === 0
 );
+/** Neal Street is lined with black cast-iron bollards along both sides. */
+const nealStreetBollards = alongStreets(
+  pedestrianStreets.filter((r) => r.name === 'Neal Street'),
+  2.2,
+  (r) => r.width / 2 - 0.9,
+  0.3
+);
 
-/** Street furniture and traffic: lamps, trees, bollards, a phone box, a cab and a van. */
+const stationEntrances = area.places.filter((p) => p.kind === 'station').map((p) => p.position);
+/** Spots on the pavement near the station's entrances, for its bins and map board. */
+const nearStation = (offsets: Vec2[]) =>
+  offsets
+    .flatMap(([dx, dz]) => stationEntrances.map((e): Vec2 => [e[0] + dx, e[1] + dz]))
+    .filter((p) => !isBlocked(p, 0.6))
+    .filter((p, i, all) => all.findIndex((q) => Math.hypot(q[0] - p[0], q[1] - p[1]) < 3) === i);
+const bins = nearStation([
+  [-3.5, -2.4],
+  [3.2, 0.5],
+]).slice(0, 3);
+const mapBoard = nearStation([[2.6, 3.5]])[0];
+
+/** Pedicabs wait for fares on James Street, just outside the station. */
+const jamesStreet = pedestrianStreets.filter((r) => r.name === 'James Street');
+const pedicabs = (jamesStreet.length > 1 ? [0.25, 0.55] : [])
+  .map((t) => {
+    const road = jamesStreet[1]!;
+    for (const side of [2.6, -2.6]) {
+      const spot = besideRoad(road.from, road.to, t, side);
+      if (!isBlocked(spot.position, 1.2)) return spot;
+    }
+    return null;
+  })
+  .filter((spot) => spot !== null);
+
+/**
+ * Street furniture and traffic: lamps, trees, bollards, bins, a phone box, pedicabs, a cab and a
+ * van.
+ */
 export function Props() {
   const longAcre = carriageways;
   const vehicle = (index: number, t: number, lane: number) => {
@@ -77,6 +113,21 @@ export function Props() {
         <Tree key={position.join()} position={position} scale={0.85 + (i % 3) * 0.15} />
       ))}
       <Bollards />
+      {nealStreetBollards.map(({ position }) => (
+        <Bollard key={position.join()} position={position} />
+      ))}
+      {bins.map((position) => (
+        <Bin key={position.join()} position={position} />
+      ))}
+      {mapBoard && <MapBoard position={mapBoard} />}
+      {pedicabs.map(({ position, heading }, i) => (
+        <Pedicab
+          key={position.join()}
+          position={position}
+          heading={heading}
+          canopy={i % 2 === 0 ? colours.roundelRed : '#f2efe8'}
+        />
+      ))}
       {phoneBox && <PhoneBox position={phoneBox.position} heading={phoneBox.heading} />}
       <Cab position={cab.position} heading={cab.heading} />
       <Cab position={secondCab.position} heading={secondCab.heading + Math.PI} />
@@ -248,6 +299,107 @@ function Van({ position, heading }: { position: Vec2; heading: number }) {
         <meshStandardMaterial color={colours.glass} roughness={0.15} metalness={0.4} />
       </mesh>
       <Wheels length={5} width={2} />
+    </group>
+  );
+}
+
+function Bollard({ position }: { position: Vec2 }) {
+  return (
+    <group position={[position[0], 0, position[1]]}>
+      <mesh position={[0, 0.45, 0]} castShadow>
+        <cylinderGeometry args={[0.1, 0.13, 0.9, 8]} />
+        <meshStandardMaterial color={colours.poleDark} roughness={0.4} />
+      </mesh>
+      <mesh position={[0, 0.93, 0]} castShadow>
+        <sphereGeometry args={[0.11, 8, 6]} />
+        <meshStandardMaterial color={colours.poleDark} roughness={0.4} />
+      </mesh>
+    </group>
+  );
+}
+
+/** A Westminster litter bin: black, with a gold band. */
+function Bin({ position }: { position: Vec2 }) {
+  return (
+    <group position={[position[0], 0, position[1]]}>
+      <mesh position={[0, 0.5, 0]} castShadow>
+        <cylinderGeometry args={[0.36, 0.33, 1, 14]} />
+        <meshStandardMaterial color="#1e2124" roughness={0.35} />
+      </mesh>
+      <mesh position={[0, 0.82, 0]}>
+        <cylinderGeometry args={[0.365, 0.365, 0.08, 14]} />
+        <meshStandardMaterial color="#c9a23c" roughness={0.3} metalness={0.5} />
+      </mesh>
+    </group>
+  );
+}
+
+/** The station's blue map board, on two legs. */
+function MapBoard({ position }: { position: Vec2 }) {
+  return (
+    <group position={[position[0], 0, position[1]]} rotation={[0, Math.PI / 2, 0]}>
+      <mesh position={[0, 1.35, 0]} castShadow>
+        <boxGeometry args={[1, 1.5, 0.12]} />
+        <meshStandardMaterial color="#1f3f93" roughness={0.4} />
+      </mesh>
+      <mesh position={[0, 1.2, 0.07]}>
+        <planeGeometry args={[0.8, 1]} />
+        <meshStandardMaterial color="#e9e6dc" roughness={0.5} />
+      </mesh>
+      {[-0.42, 0.42].map((x) => (
+        <mesh key={x} position={[x, 0.3, 0]} castShadow>
+          <boxGeometry args={[0.08, 0.6, 0.08]} />
+          <meshStandardMaterial color={colours.poleDark} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+/** A pedicab: a bicycle pulling a two-seat carriage under a bright canopy. */
+function Pedicab({
+  position,
+  heading,
+  canopy,
+}: {
+  position: Vec2;
+  heading: number;
+  canopy: string;
+}) {
+  const frame = <meshStandardMaterial color="#2a2c30" roughness={0.4} metalness={0.4} />;
+  const wheel = (x: number, z: number) => (
+    <mesh position={[x, 0.33, z]} rotation={[Math.PI / 2, 0, 0]} castShadow>
+      <torusGeometry args={[0.3, 0.04, 6, 16]} />
+      {frame}
+    </mesh>
+  );
+  return (
+    <group position={[position[0], 0, position[1]]} rotation={[0, -heading, 0]}>
+      {wheel(1.1, 0)}
+      {wheel(-0.5, 0.55)}
+      {wheel(-0.5, -0.55)}
+      <mesh position={[0.45, 0.6, 0]} rotation={[0, 0, 0.25]} castShadow>
+        <boxGeometry args={[1.4, 0.06, 0.06]} />
+        {frame}
+      </mesh>
+      {/* The carriage: a bench seat, its back, and the canopy over it. */}
+      <RoundedBox args={[0.7, 0.5, 1.2]} radius={0.06} position={[-0.5, 0.75, 0]} castShadow>
+        <meshStandardMaterial color="#26282b" roughness={0.5} />
+      </RoundedBox>
+      <RoundedBox args={[0.15, 0.7, 1.2]} radius={0.05} position={[-0.85, 1.25, 0]} castShadow>
+        <meshStandardMaterial color={canopy} roughness={0.5} />
+      </RoundedBox>
+      <RoundedBox args={[0.95, 0.08, 1.3]} radius={0.03} position={[-0.45, 1.95, 0]} castShadow>
+        <meshStandardMaterial color={canopy} roughness={0.5} />
+      </RoundedBox>
+      {[-0.9, 0].flatMap((x) =>
+        [-0.6, 0.6].map((z) => (
+          <mesh key={`${x},${z}`} position={[x, 1.45, z]}>
+            <cylinderGeometry args={[0.02, 0.02, 1, 4]} />
+            {frame}
+          </mesh>
+        ))
+      )}
     </group>
   );
 }

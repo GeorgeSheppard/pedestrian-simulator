@@ -8,7 +8,7 @@ import { Effects } from './Effects';
 import { Ground } from './Ground';
 import { Pedestrians } from './Pedestrians';
 import { Props } from './Props';
-import { Roundel } from './Roundel';
+import { Station } from './Station';
 import { colours } from './palette';
 
 const [WIDTH, DEPTH] = area.size;
@@ -64,7 +64,7 @@ export function Scene() {
       <directionalLight
         position={[120, 110, -20]}
         color="#fff1dc"
-        intensity={2.8}
+        intensity={2.5}
         castShadow
         shadow-mapSize={[2048, 2048]}
         shadow-camera-left={-80}
@@ -80,7 +80,7 @@ export function Scene() {
       <Buildings />
       <Props />
       <Pedestrians />
-      <Roundel />
+      <Station />
 
       {/* A soft shadow under the plinth, as if it were standing on a table. */}
       <ContactShadows
@@ -95,8 +95,8 @@ export function Scene() {
         makeDefault
         target={FOCUS}
         minPolarAngle={0.45}
-        maxPolarAngle={1}
-        minDistance={60}
+        maxPolarAngle={1.2}
+        minDistance={22}
         maxDistance={560}
         onChange={(event) => {
           const target = (event?.target as { target?: Vector3 } | undefined)?.target;
@@ -123,18 +123,41 @@ function startingPosition(aspect: number): [number, number, number] {
   return [position.x, position.y, position.z];
 }
 
-/** Frames the plinth for the screen's shape when the scene first loads. */
+/**
+ * Frames the plinth for the screen's shape when the scene first loads, or sets up the view given
+ * in the URL as `?view=x,y,z,targetX,targetY,targetZ`, for sharing a particular angle.
+ */
 function FitToScreen() {
   const camera = useThree((state) => state.camera);
   const aspect = useThree((state) => state.size.width / state.size.height);
+  const controls = useThree((state) => state.controls) as {
+    target: Vector3;
+    update: () => void;
+  } | null;
   const fitted = useRef(false);
 
   useEffect(() => {
-    if (fitted.current || !Number.isFinite(aspect)) return;
+    if (fitted.current || !Number.isFinite(aspect) || !controls) return;
     fitted.current = true;
-    camera.position.set(...startingPosition(aspect));
-    camera.lookAt(...FOCUS);
-  }, [camera, aspect]);
+    const view = viewFromUrl();
+    if (view) {
+      camera.position.set(...view.position);
+      controls.target.set(...view.target);
+    } else {
+      camera.position.set(...startingPosition(aspect));
+    }
+    controls.update();
+  }, [camera, aspect, controls]);
 
   return null;
+}
+
+function viewFromUrl() {
+  const numbers = new URLSearchParams(window.location.search).get('view')?.split(',').map(Number);
+  if (!numbers || numbers.length !== 6 || numbers.some((n) => !Number.isFinite(n))) return null;
+  const [x, y, z, tx, ty, tz] = numbers as [number, number, number, number, number, number];
+  return {
+    position: [x, y, z] as [number, number, number],
+    target: [tx, ty, tz] as [number, number, number],
+  };
 }

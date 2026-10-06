@@ -1,7 +1,7 @@
 /** The scene's colours: clean, slightly chalky tones, like a painted model. */
 export const colours = {
   background: '#e9edf0',
-  pavement: '#cdc6b9',
+  pavement: '#c3bcaf',
   setts: '#beb4a3',
   slabSide: '#cfc8bc',
   base: '#5d6670',
@@ -18,6 +18,7 @@ export const colours = {
   shopGlow: '#f3cf8d',
   slate: '#66707c',
   chimney: '#a5644d',
+  rooflight: '#8ea2b4',
   lamp: '#23302b',
   lampGlow: '#ffd68a',
   foliage: '#6f9a55',
@@ -34,19 +35,6 @@ export const colours = {
   tyre: '#26282b',
   glass: '#2f3b47',
 };
-
-/** Facade colours for ordinary buildings: brick, London stock brick, stucco and stone. */
-export const facades = [
-  '#b65c41',
-  '#c79a68',
-  '#efe6d4',
-  '#e4d6ba',
-  '#9db59f',
-  '#d9c49b',
-  '#9a5039',
-  '#d3d8da',
-  '#e8cfae',
-];
 
 /** Painted shopfronts. */
 export const fascias = [

@@ -17,6 +17,26 @@ The scene is styled as a painted scale model photographed with a shallow depth o
   highlights, a warm low sun for long shadows, ambient occlusion in the corners, and a glow on the
   lamps.
 
+### Matching the real place
+
+The details come from photos of the junction:
+
+- **The station** follows Leslie Green's 1907 design: two storeys of glossy ox-blood faience, with
+  open entrances between piers (ticket gates inside, in front of the lit booking hall), green
+  awnings, a cream fascia lettered COVENT GARDEN STATION with blue UNDERGROUND panels, big
+  semicircular windows above, and roundels on brackets at the corners. Four storeys of red brick
+  offices with white windows sit on top.
+- **The other buildings** take their style from OpenStreetMap's `building:material` and
+  `building:colour` tags where they're set (brick, stucco, stone), with a whole number of storeys
+  fitted to each from `building:levels`: London stock and red brick terraces with white sash
+  windows, white stucco, slate mansards with dormers, and parapets and plant on flat roofs. Boots,
+  across the crossing, has its navy fascia.
+- **The streets** have York stone pavements, granite setts on James Street and Neal Street, Neal
+  Street's black bollards, Westminster bins, the station's map board, and pedicabs waiting outside.
+
+Add `?view=x,y,z,targetX,targetY,targetZ` to the URL to open the scene at a particular camera
+position and target, in metres, to share an angle.
+
 ## Stack
 
 - **React 19 + Vite + TypeScript**

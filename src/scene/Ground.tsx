@@ -1,8 +1,18 @@
 import { useMemo } from 'react';
+import type { CanvasTexture } from 'three';
 import type { Crossing, Road } from '@/data/area';
 import { area } from '@/data/area';
 import type { Vec2 } from '@/sim/network';
 import { colours } from './palette';
+import {
+  ASPHALT_TILE,
+  FLAG_TILE,
+  SETT_TILE,
+  asphaltTexture,
+  flagsTexture,
+  settsTexture,
+  tiled,
+} from './surfaces';
 
 const SLAB_DEPTH = 1.2;
 const BASE_DEPTH = 2.4;
@@ -23,6 +33,14 @@ const pedestrianStreets = area.roads.filter((r) => r.kind === 'pedestrian');
  */
 export function Ground() {
   const [width, depth] = area.size;
+  const surfaces = useMemo(
+    () => ({ flags: flagsTexture(), setts: settsTexture(), asphalt: asphaltTexture() }),
+    []
+  );
+  const pavement = useMemo(
+    () => tiled(surfaces.flags, width, depth, FLAG_TILE),
+    [surfaces, width, depth]
+  );
 
   return (
     <group>
@@ -33,7 +51,8 @@ export function Ground() {
           <meshStandardMaterial
             key={face}
             attach={`material-${face}`}
-            color={face === 2 ? colours.pavement : colours.slabSide}
+            color={face === 2 ? '#ffffff' : colours.slabSide}
+            map={face === 2 ? pavement : null}
             roughness={0.85}
           />
         ))}
@@ -44,8 +63,8 @@ export function Ground() {
         <meshStandardMaterial color={colours.base} roughness={0.6} />
       </mesh>
 
-      <Strips roads={pedestrianStreets} y={0.004} color={colours.setts} />
-      <Strips roads={carriageways} y={0.01} color={colours.road} />
+      <Strips roads={pedestrianStreets} y={0.004} texture={surfaces.setts} tile={SETT_TILE} />
+      <Strips roads={carriageways} y={0.01} texture={surfaces.asphalt} tile={ASPHALT_TILE} />
       {carriageways.map((road) => (
         <RoadDetails key={`${road.from.join()}-${road.to.join()}`} road={road} />
       ))}
@@ -76,34 +95,52 @@ function nearCrossing(point: Vec2, distance: number) {
 }
 
 /** Road segments as flat strips, with discs at the bends to fill the gaps between them. */
-function Strips({ roads, y, color }: { roads: Road[]; y: number; color: string }) {
-  const bends = useMemo(
-    () =>
-      roads.flatMap((road, i) => {
-        const next = roads[i + 1];
-        const joined = next && next.from[0] === road.to[0] && next.from[1] === road.to[1];
-        return joined ? [{ position: road.to, width: road.width }] : [];
-      }),
-    [roads]
-  );
+function Strips({
+  roads,
+  y,
+  texture,
+  tile,
+}: {
+  roads: Road[];
+  y: number;
+  texture: CanvasTexture;
+  tile: number;
+}) {
+  const { segments, bends } = useMemo(() => {
+    const segments = roads.map((road) => {
+      const { length, angle } = frame(road.from, road.to);
+      return { road, length, angle, map: tiled(texture, length, road.width, tile) };
+    });
+    const bends = roads.flatMap((road, i) => {
+      const next = roads[i + 1];
+      const joined = next && next.from[0] === road.to[0] && next.from[1] === road.to[1];
+      return joined
+        ? [
+            {
+              position: road.to,
+              width: road.width,
+              map: tiled(texture, road.width, road.width, tile),
+            },
+          ]
+        : [];
+    });
+    return { segments, bends };
+  }, [roads, texture, tile]);
 
   return (
     <group>
-      {roads.map((road) => {
-        const { length, angle } = frame(road.from, road.to);
-        return (
-          <mesh
-            key={`${road.from.join()}-${road.to.join()}`}
-            position={[(road.from[0] + road.to[0]) / 2, y, (road.from[1] + road.to[1]) / 2]}
-            rotation={[-Math.PI / 2, 0, angle]}
-            receiveShadow
-          >
-            <planeGeometry args={[length, road.width]} />
-            <meshStandardMaterial color={color} roughness={0.9} />
-          </mesh>
-        );
-      })}
-      {bends.map(({ position, width }) => (
+      {segments.map(({ road, length, angle, map }) => (
+        <mesh
+          key={`${road.from.join()}-${road.to.join()}`}
+          position={[(road.from[0] + road.to[0]) / 2, y, (road.from[1] + road.to[1]) / 2]}
+          rotation={[-Math.PI / 2, 0, angle]}
+          receiveShadow
+        >
+          <planeGeometry args={[length, road.width]} />
+          <meshStandardMaterial map={map} roughness={0.9} />
+        </mesh>
+      ))}
+      {bends.map(({ position, width, map }) => (
         <mesh
           key={position.join()}
           position={[position[0], y, position[1]]}
@@ -111,7 +148,7 @@ function Strips({ roads, y, color }: { roads: Road[]; y: number; color: string }
           receiveShadow
         >
           <circleGeometry args={[width / 2, 24]} />
-          <meshStandardMaterial color={color} roughness={0.9} />
+          <meshStandardMaterial map={map} roughness={0.9} />
         </mesh>
       ))}
     </group>

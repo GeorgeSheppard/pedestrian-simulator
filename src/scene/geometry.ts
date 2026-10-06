@@ -45,3 +45,28 @@ export function besideRoad(from: Vec2, to: Vec2, t: number, side: number) {
   ];
   return { position, heading: Math.atan2(dz, dx), length };
 }
+
+/** The convex hull of some points, by Andrew's monotone chain. */
+export function convexHull(points: Vec2[]): Vec2[] {
+  const sorted = [...points].sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  const cross = (o: Vec2, a: Vec2, b: Vec2) =>
+    (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const half = (list: Vec2[]) => {
+    const hull: Vec2[] = [];
+    for (const p of list) {
+      while (hull.length >= 2 && cross(hull[hull.length - 2]!, hull[hull.length - 1]!, p) <= 0) {
+        hull.pop();
+      }
+      hull.push(p);
+    }
+    hull.pop();
+    return hull;
+  };
+  return [...half(sorted), ...half([...sorted].reverse())];
+}
+
+/** How much of its convex hull a polygon fills: 1 for a convex shape, less for L-shapes and notches. */
+export function convexity(points: Vec2[]): number {
+  const hull = polygonArea(convexHull(points));
+  return hull === 0 ? 0 : polygonArea(points) / hull;
+}
