@@ -1,8 +1,8 @@
 /** The scene's colours: clean, slightly chalky tones, like a painted model. */
 export const colours = {
   background: '#e9edf0',
-  pavement: '#ddd7cc',
-  setts: '#cbc2b3',
+  pavement: '#cdc6b9',
+  setts: '#beb4a3',
   slabSide: '#cfc8bc',
   base: '#5d6670',
   road: '#5f656d',
@@ -60,10 +60,10 @@ export const fascias = [
 ];
 
 /** Flat roofs seen from above: felt, lead and asphalt. */
-export const roofs = ['#8d949c', '#a6abb0', '#7d858e', '#b3aea4', '#979a92'];
+export const roofs = ['#8a9199', '#9ea3a8', '#787f88', '#a9a49a', '#6f767e'];
 
 /** Plant rooms, water tanks and air-conditioning units on the roofs. */
-export const rooftopKit = ['#e8e8e3', '#c9ccce', '#b4bbc1', '#dcd5c8'];
+export const rooftopKit = ['#c7c9c8', '#a9afb4', '#b9b2a6', '#d6d4ce', '#8f969c'];
 
 /** Clothes, so the crowd reads as lots of different people. */
 export const clothes = [

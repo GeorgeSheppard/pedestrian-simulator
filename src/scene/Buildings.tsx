@@ -169,7 +169,7 @@ function rooftopClutter(building: Building, random: () => number): RooftopBox[] 
     const chimney = random() < 0.3;
     const size: [number, number, number] = chimney
       ? [0.9, 1.2 + random() * 0.8, 2 + random()]
-      : [1.2 + random() * 2.2, 0.7 + random() * 1.4, 1.2 + random() * 2];
+      : [1 + random() * 1.6, 0.6 + random() * 1.1, 1 + random() * 1.5];
     const x = minX + random() * (maxX - minX);
     const z = minZ + random() * (maxZ - minZ);
     const margin = 0.6;

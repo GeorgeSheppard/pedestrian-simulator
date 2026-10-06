@@ -16,8 +16,8 @@ const [WIDTH, DEPTH] = area.size;
 const PAN_LIMIT = 30;
 /** The junction outside the station, where the camera looks to begin with. */
 const FOCUS: [number, number, number] = [6, 0, -4];
-/** The way the camera looks at the junction: from the east, high up, along Long Acre. */
-const VIEW_DIRECTION = new Vector3(0.53, 0.66, -0.36).normalize();
+/** The way the camera looks at the junction: from the east, high up, down Long Acre. */
+const VIEW_DIRECTION = new Vector3(0.68, 0.71, -0.18).normalize();
 /** How far away the camera starts on a landscape screen, in metres. */
 const VIEW_DISTANCE = 255;
 
@@ -32,7 +32,7 @@ export function Scene() {
       gl={{ toneMapping: NoToneMapping }}
     >
       <color attach="background" args={[colours.background]} />
-      <fog attach="fog" args={[colours.background, 250, 600]} />
+      <fog attach="fog" args={[colours.background, 380, 900]} />
 
       {/* Soft studio light all round, for the gentle highlights on painted and plastic surfaces. */}
       <Environment resolution={256} environmentIntensity={0.6}>
@@ -64,7 +64,7 @@ export function Scene() {
       <directionalLight
         position={[120, 110, -20]}
         color="#fff1dc"
-        intensity={3.2}
+        intensity={2.8}
         castShadow
         shadow-mapSize={[2048, 2048]}
         shadow-camera-left={-80}
@@ -97,7 +97,7 @@ export function Scene() {
         minPolarAngle={0.45}
         maxPolarAngle={1}
         minDistance={60}
-        maxDistance={380}
+        maxDistance={560}
         onChange={(event) => {
           const target = (event?.target as { target?: Vector3 } | undefined)?.target;
           if (!target) return;
@@ -116,7 +116,7 @@ export function Scene() {
 
 function startingPosition(aspect: number): [number, number, number] {
   // On a narrow, portrait screen, step back so the whole plinth still fits across it.
-  const distance = VIEW_DISTANCE / Math.min(1, aspect * 1.4);
+  const distance = VIEW_DISTANCE / Math.min(1, aspect * 1.05);
   const position = VIEW_DIRECTION.clone()
     .multiplyScalar(distance)
     .add(new Vector3(...FOCUS));
