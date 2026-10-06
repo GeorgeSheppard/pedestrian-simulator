@@ -10,7 +10,9 @@ The scene is styled as a painted scale model photographed with a shallow depth o
 - **A long lens from high up** (a 20° field of view): perspective flattens, as when you look down
   at a model on a table.
 - **A shallow depth of field** focused on whatever the camera is looking at: the near and far parts
-  of the scene melt into soft bokeh, which is what makes the eye read it as tiny.
+  of the scene melt into soft bokeh, which is what makes the eye read it as tiny. On top of that,
+  the edges of the slab, where people walk in from, are always blurred, wherever the camera is
+  (`src/scene/EdgeBlur.ts` works out where each pixel is on the ground from the depth buffer).
 - **A slab on a stand**: the area is cut out as a neat block, with buildings sliced off at its
   edges, floating in a pale haze.
 - **Toy materials and soft light**: clean, slightly glossy colours, a soft studio environment for
@@ -28,18 +30,25 @@ The details come from photos of the junction:
   offices with white windows sit on top.
 - **The other buildings** take their style from OpenStreetMap's `building:material` and
   `building:colour` tags where they're set (brick, stucco, stone), with a whole number of storeys
-  fitted to each from `building:levels`: London stock and red brick terraces with white sash
-  windows, white stucco, slate mansards with dormers, and parapets and plant on flat roofs. Boots,
-  across the crossing, has its navy fascia.
+  fitted to each from `building:levels`: London stock and red brick terraces in stretcher
+  bond with sash windows set back in their openings under rubbed-brick arches, stone lintels or
+  segmental arches; white stucco with moulded architraves, hoods and balconettes; Portland stone
+  ashlar; slate mansards with dormers, and parapets and plant on flat roofs. Boots, across the
+  crossing, is plain red-brown brick with dark modern windows over its navy fascia, and the
+  Victorian building down James Street is red brick patterned with cream diamonds, with pointed
+  windows.
 - **Landmarks** around the junction have their own looks: Regal House, opposite the station, with
   the living wall planted on it in 2017 (dark bronze window columns and box windows with planted
   trays, through planting that spills over the top); Russell & Bromley's Portland stone corner on
   Neal Street; Odhams Walk's dark brown brick, with the big London plane in front of it on Long
   Acre. OpenStreetMap draws a couple of these as one outline with their neighbours, so the import
   splits them where the real buildings meet.
-- **The streets** have York stone pavements, granite setts on James Street and Neal Street, Neal
-  Street's black bollards, Westminster bins, the station's map board, timber planters of shrubs and
-  flowers at Regal House's corner, and pedicabs waiting outside.
+- **The streets**: Long Acre is paved in concrete blocks of mixed greys, buffs and terracottas,
+  edged in terracotta inside granite kerbs, with loading bays marked in white; the pavements are
+  grey concrete flags, and James Street and Neal Street grey granite setts. Westminster lamp
+  columns (black, with a gold band and finial), Neal Street's bollards, Westminster bins, the
+  station's map board, a row of timber planters down the station side of James Street with a
+  no-entry sign, more planters at Regal House's corner, and pedicabs waiting outside.
 
 Add `?view=x,y,z,targetX,targetY,targetZ` to the URL to open the scene at a particular camera
 position and target, in metres, to share an angle.

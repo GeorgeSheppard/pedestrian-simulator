@@ -182,17 +182,22 @@ function isOutdoors(tags) {
  * the line where `normal · point = offset`, and gets its own name.
  */
 const SPLITS = [
-  // Regal House, with its living wall, on the corner of Long Acre and James Street, and its
-  // neighbours further down James Street.
-  { id: 'way/173544662', normal: [0, 1], offset: 17, names: ['Regal House', undefined] },
   // Boots, across the crossing from the station, and Russell & Bromley's stone corner on Neal Street.
   { id: 'way/186337095', normal: [1, 0], offset: 13, names: ['Boots', 'Russell & Bromley'] },
 ];
 /** Names for unnamed buildings that photos show are landmarks. */
 const NAMES = {
+  // With the living wall, opposite the station; its shops run from the corner down James Street.
+  'way/173544662': 'Regal House',
   'way/173544239': 'Odhams Walk',
   'way/1492122497': 'Odhams Walk',
   'way/173544281': 'Odhams Walk',
+};
+/** How buildings look, where photos show something more particular than OpenStreetMap's tags. */
+const LOOKS = {
+  // The Victorian building after Regal House down James Street: red brick in a cream diamond
+  // pattern, with pointed windows.
+  'way/173544657': 'victorian',
 };
 
 /** The part of a polygon where `normal · point <= offset`, by Sutherland–Hodgman. */
@@ -264,6 +269,7 @@ for (const element of elements) {
         levels: parseInt(tags['building:levels'], 10) || undefined,
         material: tags['building:material'],
         colour: tags['building:colour'],
+        look: LOOKS[id],
         footprint: part.points.map(([x, z]) => [round(x), round(z)]),
       });
     }

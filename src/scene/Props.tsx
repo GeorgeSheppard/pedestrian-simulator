@@ -4,13 +4,13 @@ import type { Road } from '@/data/area';
 import { area } from '@/data/area';
 import type { Vec2 } from '@/sim/network';
 import { type Clump, Clumps } from './Foliage';
-import { besideRoad, faces, isBlocked, onFace } from './geometry';
+import { besideRoad, faceRotation, faces, isBlocked, onFace } from './geometry';
 import { colours, flowers, leaves } from './palette';
 import { pick, seeded } from './random';
 import { PlaneTree } from './Trees';
 
 const LAMP_SPACING = 16;
-const LAMP_HEIGHT = 5.2;
+const LAMP_HEIGHT = 6.4;
 
 const carriageways = area.roads.filter((r) => r.kind === 'carriageway');
 const pedestrianStreets = area.roads.filter((r) => r.kind === 'pedestrian');
@@ -55,14 +55,6 @@ const lamps = [
   ...alongStreets(pedestrianStreets, LAMP_SPACING, (r) => r.width / 2 - 0.6, 0.5),
 ];
 /**
- * Street trees: photos show London planes further down James Street towards the market, and up
- * Neal Street, but none right outside the station.
- */
-const trees = alongStreets(pedestrianStreets, 11, (r) => r.width / 2 - 1.6, 1.4).filter(
-  ({ position: [, z] }, i) => i % 2 === 0 && (z > 20 || z < -22)
-);
-
-/**
  * The big London plane on the corner of Long Acre and Neal Street, in front of Odhams Walk,
  * diagonally opposite the station.
  */
@@ -75,6 +67,35 @@ const cornerPlane = (() => {
   );
   const spot: Vec2 = [corner[0] + 2.8, corner[1] + 3.2];
   return isBlocked(spot, 0.5) ? null : spot;
+})();
+
+/**
+ * The row of big timber planters down the station side of James Street, out on the setts, with a
+ * no-entry sign at the Long Acre end, as in photos looking down James Street.
+ */
+const jamesStreetPlanters = (() => {
+  const station = area.buildings.find((b) => b.kind === 'train_station');
+  if (!station) return { planters: [], noEntry: null };
+  const walls = faces(station.footprint)
+    .filter((f) => f.street && f.normal[0] > 0.7 && f.length > 6)
+    .sort((a, b) => Math.min(a.from[1], a.to[1]) - Math.min(b.from[1], b.to[1]));
+  const planters: { position: Vec2; heading: number }[] = [];
+  for (const wall of walls) {
+    // Walk down James Street, away from Long Acre.
+    const southwards = wall.to[1] > wall.from[1];
+    for (let along = 3; along < wall.length - 1.5; along += 3.4) {
+      const d = southwards ? along : wall.length - along;
+      planters.push({ position: onFace(wall, d, 3.1), heading: faceRotation(wall) });
+    }
+  }
+  const first = walls[0];
+  const noEntry = first
+    ? onFace(first, first.to[1] > first.from[1] ? 1 : first.length - 1, 3.1)
+    : null;
+  return {
+    planters: planters.filter((p) => !isBlocked(p.position, 1)),
+    noEntry: noEntry && !isBlocked(noEntry, 0.3) ? noEntry : null,
+  };
 })();
 
 /** Timber planters of shrubs and flowers, round Regal House's corner, as in photos of it. */
@@ -148,10 +169,17 @@ export function Props() {
       {lamps.map(({ position }) => (
         <Lamp key={position.join()} position={position} />
       ))}
-      {trees.map(({ position }, i) => (
-        <PlaneTree key={position.join()} position={position} height={7.5 + (i % 3) * 1.2} />
-      ))}
       {cornerPlane && <PlaneTree position={cornerPlane} height={16} />}
+      {jamesStreetPlanters.planters.map(({ position, heading }, i) => (
+        <Planter
+          key={position.join()}
+          position={position}
+          seed={100 + i}
+          size={[2.1, 0.8, 0.95]}
+          heading={heading}
+        />
+      ))}
+      {jamesStreetPlanters.noEntry && <NoEntrySign position={jamesStreetPlanters.noEntry} />}
       {planterSpots.map((position, i) => (
         <Planter key={position.join()} position={position} seed={i} />
       ))}
@@ -179,19 +207,37 @@ export function Props() {
   );
 }
 
+/**
+ * A Westminster lamp column: a heavy fluted base with a gold band, a tall slim black column, a
+ * little bracket arm for signs, and a lantern under a dark cap with a gold finial.
+ */
 function Lamp({ position }: { position: Vec2 }) {
+  const black = <meshStandardMaterial color={colours.lamp} roughness={0.35} metalness={0.3} />;
+  const gold = <meshStandardMaterial color="#c9a23c" roughness={0.3} metalness={0.6} />;
   return (
     <group position={[position[0], 0, position[1]]}>
-      <mesh position={[0, 0.3, 0]} castShadow>
-        <cylinderGeometry args={[0.14, 0.18, 0.6, 10]} />
-        <meshStandardMaterial color={colours.lamp} roughness={0.4} />
+      <mesh position={[0, 0.55, 0]} castShadow>
+        <cylinderGeometry args={[0.17, 0.22, 1.1, 12]} />
+        {black}
+      </mesh>
+      <mesh position={[0, 1.12, 0]}>
+        <cylinderGeometry args={[0.175, 0.175, 0.08, 12]} />
+        {gold}
       </mesh>
       <mesh position={[0, LAMP_HEIGHT / 2, 0]} castShadow>
-        <cylinderGeometry args={[0.06, 0.09, LAMP_HEIGHT, 8]} />
-        <meshStandardMaterial color={colours.lamp} roughness={0.4} />
+        <cylinderGeometry args={[0.055, 0.1, LAMP_HEIGHT, 8]} />
+        {black}
       </mesh>
-      <mesh position={[0, LAMP_HEIGHT + 0.3, 0]}>
-        <cylinderGeometry args={[0.22, 0.14, 0.5, 6]} />
+      <mesh position={[0.22, LAMP_HEIGHT - 1.3, 0]}>
+        <boxGeometry args={[0.45, 0.04, 0.04]} />
+        {black}
+      </mesh>
+      <mesh position={[0, LAMP_HEIGHT + 0.05, 0]}>
+        <cylinderGeometry args={[0.1, 0.06, 0.12, 8]} />
+        {black}
+      </mesh>
+      <mesh position={[0, LAMP_HEIGHT + 0.28, 0]}>
+        <cylinderGeometry args={[0.2, 0.12, 0.36, 8]} />
         <meshStandardMaterial
           color={colours.lampGlow}
           emissive={colours.lampGlow}
@@ -199,9 +245,37 @@ function Lamp({ position }: { position: Vec2 }) {
           toneMapped={false}
         />
       </mesh>
-      <mesh position={[0, LAMP_HEIGHT + 0.62, 0]} castShadow>
-        <coneGeometry args={[0.3, 0.3, 6]} />
-        <meshStandardMaterial color={colours.lamp} roughness={0.4} />
+      <mesh position={[0, LAMP_HEIGHT + 0.53, 0]} castShadow>
+        <coneGeometry args={[0.25, 0.2, 8]} />
+        {black}
+      </mesh>
+      <mesh position={[0, LAMP_HEIGHT + 0.7, 0]}>
+        <sphereGeometry args={[0.06, 8, 6]} />
+        {gold}
+      </mesh>
+      <mesh position={[0, LAMP_HEIGHT + 0.82, 0]}>
+        <coneGeometry args={[0.025, 0.18, 6]} />
+        {gold}
+      </mesh>
+    </group>
+  );
+}
+
+/** A no-entry sign: a red disc with a white bar, on a grey post. */
+function NoEntrySign({ position }: { position: Vec2 }) {
+  return (
+    <group position={[position[0], 0, position[1]]} rotation={[0, Math.PI / 2, 0]}>
+      <mesh position={[0, 1.2, 0]} castShadow>
+        <cylinderGeometry args={[0.04, 0.04, 2.4, 6]} />
+        <meshStandardMaterial color="#3b3e42" roughness={0.5} />
+      </mesh>
+      <mesh position={[0, 2.25, 0.05]} rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[0.36, 0.36, 0.04, 24]} />
+        <meshStandardMaterial color="#d32a1f" roughness={0.4} />
+      </mesh>
+      <mesh position={[0, 2.25, 0.075]}>
+        <boxGeometry args={[0.5, 0.1, 0.02]} />
+        <meshStandardMaterial color="#ffffff" roughness={0.4} />
       </mesh>
     </group>
   );
@@ -428,46 +502,72 @@ function Pedicab({
   );
 }
 
-/** A square timber planter, planted with shrubs and a few flowers. */
-function Planter({ position, seed }: { position: Vec2; seed: number }) {
+/** A timber planter, planted with shrubs and a few flowers. */
+function Planter({
+  position,
+  seed,
+  size = [1.3, 0.9, 1.3],
+  heading = 0,
+}: {
+  position: Vec2;
+  seed: number;
+  /** Length, height and depth, in metres. */
+  size?: [number, number, number];
+  heading?: number;
+}) {
+  const [length, height, depth] = size;
   const clumps = useMemo(() => {
     const random = seeded(`planter ${seed}`);
+    const along: Vec2 = [Math.cos(-heading), Math.sin(-heading)];
+    const across: Vec2 = [-along[1], along[0]];
+    const spot = (spread: number): Vec2 => {
+      const a = (random() - 0.5) * length * spread;
+      const b = (random() - 0.5) * depth * spread;
+      return [
+        position[0] + along[0] * a + across[0] * b,
+        position[1] + along[1] * a + across[1] * b,
+      ];
+    };
     const clumps: Clump[] = [];
-    for (let i = 0; i < 6; i++) {
+    const shrubs = Math.round(length * depth * 4);
+    for (let i = 0; i < shrubs; i++) {
+      const [x, z] = spot(0.75);
       clumps.push({
-        position: [
-          position[0] + (random() - 0.5) * 0.9,
-          0.95 + random() * 0.45,
-          position[1] + (random() - 0.5) * 0.9,
-        ],
+        position: [x, height + 0.05 + random() * 0.45, z],
         radius: 0.3 + random() * 0.2,
         colour: pick(leaves, random()),
       });
     }
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < shrubs * 1.2; i++) {
+      const [x, z] = spot(0.85);
       clumps.push({
-        position: [
-          position[0] + (random() - 0.5) * 1,
-          1.3 + random() * 0.4,
-          position[1] + (random() - 0.5) * 1,
-        ],
+        position: [x, height + 0.4 + random() * 0.4, z],
         radius: 0.09 + random() * 0.05,
         colour: pick(flowers, random()),
       });
     }
     return clumps;
-  }, [position, seed]);
+  }, [position, seed, length, height, depth, heading]);
 
   return (
     <group>
-      <mesh position={[position[0], 0.45, position[1]]} castShadow receiveShadow>
-        <boxGeometry args={[1.3, 0.9, 1.3]} />
-        <meshStandardMaterial color="#3d352e" roughness={0.7} />
-      </mesh>
-      <mesh position={[position[0], 0.92, position[1]]}>
-        <boxGeometry args={[1.38, 0.06, 1.38]} />
-        <meshStandardMaterial color="#5a4e43" roughness={0.6} />
-      </mesh>
+      <group position={[position[0], 0, position[1]]} rotation={[0, heading, 0]}>
+        <mesh position={[0, height / 2, 0]} castShadow receiveShadow>
+          <boxGeometry args={[length, height, depth]} />
+          <meshStandardMaterial color="#5b4a3a" roughness={0.75} />
+        </mesh>
+        {/* Horizontal timber boards, and a darker capping rail. */}
+        {[0.25, 0.5, 0.75].map((t) => (
+          <mesh key={t} position={[0, height * t, 0]}>
+            <boxGeometry args={[length + 0.01, 0.015, depth + 0.01]} />
+            <meshStandardMaterial color="#3e3127" roughness={0.8} />
+          </mesh>
+        ))}
+        <mesh position={[0, height + 0.02, 0]}>
+          <boxGeometry args={[length + 0.08, 0.05, depth + 0.08]} />
+          <meshStandardMaterial color="#3e3127" roughness={0.6} />
+        </mesh>
+      </group>
       <Clumps clumps={clumps} />
     </group>
   );

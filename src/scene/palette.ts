@@ -1,12 +1,12 @@
 /** The scene's colours: clean, slightly chalky tones, like a painted model. */
 export const colours = {
   background: '#e9edf0',
-  pavement: '#c3bcaf',
-  setts: '#beb4a3',
+  pavement: '#a9a7a2',
+  setts: '#8f8d89',
   slabSide: '#cfc8bc',
   base: '#5d6670',
   road: '#5f656d',
-  kerb: '#ece8df',
+  kerb: '#a3a19c',
   roadMarking: '#f7f5ef',
   yellowLine: '#f2c230',
   poleDark: '#26282b',

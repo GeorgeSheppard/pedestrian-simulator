@@ -12,6 +12,8 @@ export interface Building {
   material?: string;
   /** The facade's colour, when known: a name like brown or white, or a hex colour. */
   colour?: string;
+  /** A particular look, from photos, where OpenStreetMap's tags don't say enough. */
+  look?: string;
   footprint: Vec2[];
 }
 

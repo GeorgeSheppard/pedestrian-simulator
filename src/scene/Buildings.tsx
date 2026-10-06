@@ -93,13 +93,13 @@ export function Buildings() {
       const storey =
         Math.round((wallHeight / Math.max(1, mansard ? storeys - 1 : storeys)) * 100) / 100;
 
-      const textureKey = `${facade.style} ${storey}`;
+      const textureKey = `${facade.style} ${facade.variant} ${storey}`;
       if (!facadeTextures.has(textureKey)) {
-        facadeTextures.set(textureKey, facadeTexture(facade.style, storey));
+        facadeTextures.set(textureKey, facadeTexture(facade.style, storey, facade.variant));
       }
       const walls = new MeshStandardMaterial({
         map: facadeTextures.get(textureKey),
-        roughness: facade.style === 'stucco' ? 0.5 : 0.75,
+        roughness: facade.style === 'stucco' || facade.style === 'stone' ? 0.55 : 0.8,
       });
 
       const fascia = landmark?.fascia ?? pick(fascias, random());
