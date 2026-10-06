@@ -1,0 +1,11 @@
+.attribution {
+  position: fixed;
+  right: max(8px, env(safe-area-inset-right));
+  bottom: max(6px, env(safe-area-inset-bottom));
+  font:
+    11px/1.4 system-ui,
+    sans-serif;
+  color: #6b7078;
+  text-decoration: none;
+  opacity: 0.8;
+}
