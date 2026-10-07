@@ -60,10 +60,14 @@ const CREEPING = 3;
 export const PATIENCE = 6;
 /** How far ahead drivers look for people in the road, in metres. */
 const LOOKAHEAD = 30;
-/** Seconds between vehicles turning up, at most and at least. */
+/** Seconds between vehicles turning up, at most and at least, at the usual level of traffic. */
 const ARRIVALS: [number, number] = [3, 9];
+/** The usual number of vehicles allowed on the road at once. */
+const USUAL_CAPACITY = 6;
 /** The room a new vehicle needs at the start of the road, in metres. */
 const ENTRY_ROOM = 12;
+/** How far along the road has to be clear of people for a new vehicle to drive in, in metres. */
+export const ENTRY_CLEAR = 22;
 
 /**
  * Vehicles driving one way along a single lane, by a few rules:
@@ -81,10 +85,18 @@ export class Traffic {
   private readonly options: TrafficOptions;
   private readonly random: () => number;
   private untilArrival = 0;
+  /** Whether a vehicle is waiting to drive in at the start of the road. */
+  queued = false;
+  /**
+   * How many vehicles may be on the road at once, up to the number of slots. Busier roads also get
+   * vehicles turning up more often; with none, no more turn up.
+   */
+  capacity: number;
 
   constructor(options: TrafficOptions) {
     this.options = options;
     this.random = options.random ?? Math.random;
+    this.capacity = Math.min(USUAL_CAPACITY, options.slots.length);
     this.vehicles = options.slots.map((kind, slot) => ({
       slot,
       kind,
@@ -114,12 +126,21 @@ export class Traffic {
   update(dt: number, hazards: Hazards) {
     const { lane } = this.options;
     this.untilArrival -= dt;
+    this.queued = false;
     if (this.untilArrival <= 0) {
-      this.untilArrival = ARRIVALS[0] + this.random() * (ARRIVALS[1] - ARRIVALS[0]);
-      const free = this.vehicles.filter((v) => !v.active);
+      const active = this.vehicles.filter((v) => v.active).length;
+      const free = active < this.capacity ? this.vehicles.filter((v) => !v.active) : [];
       const roomy = this.vehicles.every((v) => !v.active || v.s - v.length / 2 > ENTRY_ROOM);
-      if (free.length > 0 && roomy) {
-        this.start(free[Math.floor(this.random() * free.length)]!, 0);
+      // Nor drive in on top of someone crossing near the start of the road: wait, and try again
+      // each step, until they're clear.
+      const crossing = hazards.inLane.some((s) => s < ENTRY_CLEAR);
+      if (free.length > 0 && roomy && crossing) {
+        this.queued = true;
+      } else {
+        const usual = Math.min(USUAL_CAPACITY, this.vehicles.length);
+        const busyness = Math.max(this.capacity, 1) / usual;
+        this.untilArrival = (ARRIVALS[0] + this.random() * (ARRIVALS[1] - ARRIVALS[0])) / busyness;
+        if (free.length > 0 && roomy) this.start(free[Math.floor(this.random() * free.length)]!, 0);
       }
     }
 

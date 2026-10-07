@@ -51,7 +51,3 @@ export interface Area {
 
 /** The area around Covent Garden station, generated from OpenStreetMap by scripts/fetch-osm.mjs. */
 export const area = data as unknown as Area;
-
-const unique = (nodes: number[]) => [...new Set(nodes)];
-
-export const shopNodes = unique(area.places.filter((p) => p.kind === 'shop').map((p) => p.node));

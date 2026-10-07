@@ -11,11 +11,14 @@ function seeded(seed: number) {
 }
 
 describe('the street outside Covent Garden station', () => {
-  const sim = createSimulation(seeded(11));
+  const sim = createSimulation({ random: seeded(11) });
   const footprint = stationLayout!.footprint;
   let hits = 0;
   let insideStation = 0;
   let trips = 0;
+  let shopping = 0;
+  let groups = 0;
+  let spread = 0;
   const wasActive = sim.traffic.vehicles.map((v) => v.active);
 
   for (let i = 0; i < 240 * 30; i++) {
@@ -35,6 +38,17 @@ describe('the street outside Covent Garden station', () => {
       wasActive[j] = v.active;
     });
     if (sim.crowd.pedestrians.some((p) => insidePolygon(p.position, footprint))) insideStation++;
+    if (sim.crowd.pedestrians.some((p) => p.indoors > 0)) shopping++;
+    const companions = sim.crowd.pedestrians.filter(
+      (p) => p.leader && !p.leaving && p.indoors <= 0
+    );
+    if (companions.length > 0) groups++;
+    for (const p of companions) {
+      const leader = p.leader!;
+      if (Math.hypot(p.position[0] - leader.position[0], p.position[1] - leader.position[1]) > 4) {
+        spread++;
+      }
+    }
   }
 
   it('never lets a vehicle drive through someone', () => {
@@ -42,7 +56,28 @@ describe('the street outside Covent Garden station', () => {
   });
 
   it('keeps traffic flowing along Long Acre', () => {
-    expect(trips).toBeGreaterThan(10);
+    // Jammed traffic would manage one or two; flowing traffic, between the crowds at the zebra,
+    // gets a vehicle through every half minute or so.
+    expect(trips).toBeGreaterThan(6);
+  });
+
+  it('has people going into the shops', () => {
+    expect(shopping).toBeGreaterThan(240 * 30 * 0.9);
+  });
+
+  it('has groups walking around together', () => {
+    expect(groups).toBeGreaterThan(240 * 30 * 0.9);
+    // Rarely more than a few metres from whoever's leading them.
+    expect(spread).toBeLessThan(240 * 30);
+  });
+
+  it('thins the crowd out when it is made smaller, and fills it when made bigger', () => {
+    sim.population = 40;
+    for (let i = 0; i < 60 * 30; i++) sim.update(1 / 30);
+    expect(sim.crowd.pedestrians.length).toBeLessThan(55);
+    sim.population = 200;
+    for (let i = 0; i < 90 * 30; i++) sim.update(1 / 30);
+    expect(sim.crowd.pedestrians.length).toBeGreaterThan(170);
   });
 
   it('has people walking into and out of the station', () => {

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Environment, Lightformer, MapControls } from '@react-three/drei';
 import { NoToneMapping, Vector3 } from 'three';
@@ -8,6 +8,7 @@ import { Ground } from './Ground';
 import { Pedestrians } from './Pedestrians';
 import { Props } from './Props';
 import { LivingWall } from './LivingWall';
+import { ShopDoors } from './ShopDoors';
 import { Station } from './Station';
 import { Traffic } from './Vehicles';
 import { createSimulation } from './world';
@@ -24,9 +25,20 @@ const VIEW_DIRECTION = new Vector3(0.68, 0.71, -0.18).normalize();
 /** How far away the camera starts on a landscape screen, in metres. */
 const VIEW_DISTANCE = 255;
 
-export function Scene({ weather }: { weather: Weather }) {
+export function Scene({
+  weather,
+  people,
+  traffic,
+}: {
+  weather: Weather;
+  /** How many people to have walking around. */
+  people: number;
+  /** How many vehicles can be on the road at once. */
+  traffic: number;
+}) {
   const look = LOOKS[weather];
-  const simulation = useMemo(() => createSimulation(), []);
+  // Made once, starting with the crowd and traffic asked for; changes after that it eases into.
+  const [simulation] = useState(() => createSimulation({ people, traffic }));
   return (
     <Canvas
       shadows
@@ -84,10 +96,11 @@ export function Scene({ weather }: { weather: Weather }) {
 
       <Ground background={look.background} />
       <Buildings />
+      <ShopDoors />
       <Props />
       <Clouds look={look} />
       {look.rain && <Rain />}
-      <Simulate simulation={simulation} />
+      <Simulate simulation={simulation} people={people} traffic={traffic} />
       <Pedestrians simulation={simulation} />
       <Traffic simulation={simulation} />
       <Station />
@@ -164,9 +177,23 @@ function viewFromUrl() {
   };
 }
 
-/** Steps the people and traffic on each frame, before anything is drawn. */
-function Simulate({ simulation }: { simulation: Simulation }) {
-  // Don't try to catch up after the tab has been in the background.
-  useFrame((_, delta) => simulation.update(Math.min(delta, 0.1)), -1);
+/**
+ * Steps the people and traffic on each frame, before anything is drawn, with as many of each as the
+ * controls ask for: the crowd and the traffic thin out or fill up to them over the next while.
+ */
+function Simulate({
+  simulation,
+  people,
+  traffic,
+}: {
+  simulation: Simulation;
+  people: number;
+  traffic: number;
+}) {
+  useFrame((_, delta) => {
+    simulation.resize(people, traffic);
+    // Don't try to catch up after the tab has been in the background.
+    simulation.update(Math.min(delta, 0.1));
+  }, -1);
   return null;
 }

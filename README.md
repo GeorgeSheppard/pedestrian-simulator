@@ -54,13 +54,17 @@ The details come from photos of the junction:
 
 The simulation (`src/sim/`) runs the crowd and Long Acre's traffic together:
 
-- **People** turn up at the edges of the area, walk to shops, off the other side, or into the
-  station: in through the two open bays off Long Acre, across the booking hall and through the
+- **People** turn up at the edges of the area and walk off the other side, into a shop, or into
+  the station: in through the two open bays off Long Acre, across the booking hall and through the
   gates at the back, down to the lifts. People off a train come up through those gates, or out of
-  the exits on James Street.
-- **Traffic** runs one way along a single lane down the middle of Long Acre, between the loading
-  bays: black cabs, cars and vans, each at its own speed, keeping a gap to the one in front, with
-  brake lights as they slow.
+  the exits on James Street. Each shop has a lit doorway on its street front; shoppers go in, stay
+  a while, and come back out to carry on.
+- **Different paces**: some stroll, most walk, and some hurry (more so to and from the trains).
+  About a third come in twos, threes or fours, walking side by side at the group's easy pace,
+  waiting together at kerbs and going in and out of shops together.
+- **Traffic** runs one way, eastbound, along a single lane down the middle of Long Acre, between
+  the loading bays: black cabs, cars and vans, each at its own speed, keeping a gap to the one in
+  front, with brake lights as they slow.
 - **Taking turns**: drivers stop for anyone on or waiting at the zebra crossing, and for anyone in
   the carriageway ahead. People wait at the kerb rather than step out in front of a moving
   vehicle, wanting a bigger gap where there's no zebra. Covent Garden's crowds never stop coming,
@@ -69,10 +73,17 @@ The simulation (`src/sim/`) runs the crowd and Long Acre's traffic together:
 
 ### Weather
 
-The picker in the corner switches between sunny, cloudy and rain (`src/weather/`). Faceted clouds
+The controls in the bottom left switch between sunny, cloudy and rain (`src/weather/`). Faceted clouds
 drift over the model on the wind, casting moving shadows; cloudier skies dim and cool the sun and
 grey the haze; and rain falls in slanting streaks. Add `?weather=cloudy` or `?weather=rain` to the
 URL to open in that weather.
+
+### Controls
+
+The panel in the bottom left sets the weather, how many people there are (up to 400) and how busy
+the traffic is (up to 12 vehicles on Long Acre at once). The crowd and traffic ease to new numbers
+rather than jumping: extra people head off and fewer new ones turn up, or the other way round. Add
+`?people=300` or `?traffic=10` to the URL to start with those.
 
 Add `?view=x,y,z,targetX,targetY,targetZ` to the URL to open the scene at a particular camera
 position and target, in metres, to share an angle.

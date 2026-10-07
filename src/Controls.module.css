@@ -1,0 +1,124 @@
+.panel,
+.toggle {
+  position: fixed;
+  left: max(12px, env(safe-area-inset-left));
+  bottom: max(12px, env(safe-area-inset-bottom));
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: 0 1px 8px rgba(30, 40, 50, 0.16);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: #1f2328;
+  font:
+    500 12px/1.2 system-ui,
+    sans-serif;
+}
+
+.panel {
+  width: min(260px, calc(100vw - 24px));
+  box-sizing: border-box;
+  padding: 10px 12px 12px;
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.title {
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  color: #4a5059;
+}
+
+.close {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #4a5059;
+  cursor: pointer;
+  transform: rotate(180deg);
+}
+
+.segmented {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 999px;
+  background: rgba(31, 35, 40, 0.07);
+}
+
+.option {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #4a5059;
+  font: inherit;
+  cursor: pointer;
+}
+
+.option[aria-checked='true'] {
+  background: #ffffff;
+  color: #1f2328;
+  box-shadow: 0 1px 3px rgba(30, 40, 50, 0.18);
+}
+
+.slider {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sliderLabel {
+  display: flex;
+  justify-content: space-between;
+  color: #4a5059;
+}
+
+.sliderLabel output {
+  color: #1f2328;
+  font-variant-numeric: tabular-nums;
+}
+
+.slider input {
+  width: 100%;
+  margin: 0;
+  accent-color: #3d6ad6;
+}
+
+.option:focus-visible,
+.toggle:focus-visible,
+.close:focus-visible,
+.slider input:focus-visible {
+  outline: 2px solid #3d6ad6;
+  outline-offset: 1px;
+}
+
+.icon {
+  flex: none;
+}

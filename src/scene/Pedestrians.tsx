@@ -38,7 +38,7 @@ export function Pedestrians({ simulation }: { simulation: Simulation }) {
     const { matrix, position, rotation, euler, scale, colour } = scratch;
     const people = crowd.pedestrians.slice(0, CAPACITY);
     people.forEach((person, i) => {
-      const walking = person.dwell <= 0 && !person.leaving;
+      const walking = person.indoors <= 0 && !person.leaving && !person.waiting;
       const lift = walking ? Math.abs(Math.sin(person.stride)) * BOB : 0;
       const sway = walking ? Math.sin(person.stride) * 0.06 : 0;
       rotation.setFromEuler(euler.set(0, -person.heading, sway));

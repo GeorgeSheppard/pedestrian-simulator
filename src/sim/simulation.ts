@@ -1,7 +1,7 @@
 import { Crowd, type CrowdOptions } from './crowd';
 import type { Vec2 } from './network';
 import { Polyline } from './path';
-import { Traffic, type VehicleKind } from './traffic';
+import { ENTRY_CLEAR, Traffic, type VehicleKind } from './traffic';
 
 export interface SimulationOptions {
   crowd: Omit<CrowdOptions, 'mayStep' | 'random'>;
@@ -52,6 +52,7 @@ export class Simulation {
       ...options.crowd,
       random: options.random,
       mayStep: (from, to) => this.mayStep(from, to),
+      inRoad: (point) => Math.abs(this.road.project(point).lateral) < this.halfWidth,
     });
     this.traffic = new Traffic({
       lane: this.road,
@@ -64,7 +65,7 @@ export class Simulation {
   /** Fills the street straight away. */
   populate() {
     this.crowd.populate();
-    this.traffic.populate(Math.ceil(this.traffic.vehicles.length / 2));
+    this.traffic.populate(Math.ceil(this.traffic.capacity / 2));
     // Clear away any vehicle that's turned up where someone's crossing, or too close behind them
     // to stop.
     for (const vehicle of this.traffic.vehicles) {
@@ -75,6 +76,28 @@ export class Simulation {
         return Math.abs(lateral) < this.halfWidth && ahead > -vehicle.length && ahead < CLEARANCE;
       });
     }
+  }
+
+  /** How many people walk around the scene; changing it grows or thins out the crowd. */
+  get population(): number {
+    return this.crowd.population;
+  }
+  set population(count: number) {
+    this.crowd.population = count;
+  }
+
+  /** How many vehicles may be on Long Acre at once; vehicles already on it drive on. */
+  get vehicleCount(): number {
+    return this.traffic.capacity;
+  }
+  set vehicleCount(count: number) {
+    this.traffic.capacity = Math.max(0, Math.min(count, this.traffic.vehicles.length));
+  }
+
+  /** Asks for this many people and vehicles; the crowd and traffic ease towards them. */
+  resize(people: number, vehicles: number) {
+    this.population = people;
+    this.vehicleCount = vehicles;
   }
 
   /** Moves everything on by `dt` seconds. */
@@ -113,6 +136,8 @@ export class Simulation {
     // Let a driver who's been waiting at a crossing go first.
     const crossing = this.crossings.findIndex((c) => Math.abs(after.s - c) < CROSSING_HALF_LENGTH);
     if (crossing >= 0 && this.traffic.pullingAway(crossing)) return false;
+    // Away from a zebra, vehicles have priority, including one waiting to drive in.
+    if (crossing < 0 && this.traffic.queued && after.s < ENTRY_CLEAR) return false;
     const look = crossing >= 0 ? LOOK_SECONDS.zebra : LOOK_SECONDS.road;
     return !this.traffic.vehicles.some((vehicle) => {
       if (!vehicle.active) return false;
