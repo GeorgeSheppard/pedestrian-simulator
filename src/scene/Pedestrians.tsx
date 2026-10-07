@@ -1,12 +1,9 @@
 import { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Color, Euler, type InstancedMesh, Matrix4, Quaternion, Vector3 } from 'three';
-import { area, shopNodes, stationNodes } from '@/data/area';
-import { Crowd } from '@/sim/crowd';
-import { WalkNetwork } from '@/sim/network';
+import type { Simulation } from '@/sim/simulation';
 import { clothes, skin } from './palette';
 
-const POPULATION = 140;
 const CAPACITY = 300;
 
 const BODY_RADIUS = 0.21;
@@ -18,21 +15,10 @@ const HEAD_CENTRE = BODY_RADIUS * 2 + BODY_LENGTH + HEAD_RADIUS * 0.9;
 const BOB = 0.05;
 
 /** The crowd, drawn as two instanced meshes: a capsule body and a ball of a head each. */
-export function Pedestrians() {
+export function Pedestrians({ simulation }: { simulation: Simulation }) {
   const bodies = useRef<InstancedMesh>(null);
   const heads = useRef<InstancedMesh>(null);
-
-  const crowd = useMemo(() => {
-    const crowd = new Crowd({
-      network: new WalkNetwork(area.walk.nodes, area.walk.edges),
-      entrances: area.walk.spawns,
-      station: stationNodes,
-      shops: shopNodes,
-      population: POPULATION,
-    });
-    crowd.populate();
-    return crowd;
-  }, []);
+  const { crowd } = simulation;
 
   const scratch = useMemo(
     () => ({
@@ -46,10 +32,8 @@ export function Pedestrians() {
     []
   );
 
-  useFrame((_, delta) => {
+  useFrame(() => {
     if (!bodies.current || !heads.current) return;
-    // Don't try to catch up after the tab has been in the background.
-    crowd.update(Math.min(delta, 0.1));
 
     const { matrix, position, rotation, euler, scale, colour } = scratch;
     const people = crowd.pedestrians.slice(0, CAPACITY);

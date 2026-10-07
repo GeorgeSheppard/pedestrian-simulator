@@ -54,7 +54,4 @@ export const area = data as unknown as Area;
 
 const unique = (nodes: number[]) => [...new Set(nodes)];
 
-export const stationNodes = unique(
-  area.places.filter((p) => p.kind === 'station').map((p) => p.node)
-);
 export const shopNodes = unique(area.places.filter((p) => p.kind === 'shop').map((p) => p.node));

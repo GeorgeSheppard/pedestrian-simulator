@@ -112,3 +112,27 @@ export function onFace(face: Face, along: number, out: number): Vec2 {
 export function faceRotation(face: Face): number {
   return -Math.atan2(face.to[1] - face.from[1], face.to[0] - face.from[0]);
 }
+
+/** The part of a polygon where `normal · point <= offset`, by Sutherland–Hodgman. */
+export function clipHalfPlane(points: Vec2[], normal: Vec2, offset: number): Vec2[] {
+  const side = (p: Vec2) => normal[0] * p[0] + normal[1] * p[1] - offset;
+  const out: Vec2[] = [];
+  points.forEach((current, i) => {
+    const previous = points[(i + points.length - 1) % points.length]!;
+    const [a, b] = [side(previous), side(current)];
+    const crossing = (): Vec2 => {
+      const t = a / (a - b);
+      return [
+        previous[0] + (current[0] - previous[0]) * t,
+        previous[1] + (current[1] - previous[1]) * t,
+      ];
+    };
+    if (b <= 0) {
+      if (a > 0) out.push(crossing());
+      out.push(current);
+    } else if (a <= 0) {
+      out.push(crossing());
+    }
+  });
+  return out;
+}

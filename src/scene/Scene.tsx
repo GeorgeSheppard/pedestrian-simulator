@@ -1,5 +1,5 @@
-import { useEffect, useRef } from 'react';
-import { Canvas, useThree } from '@react-three/fiber';
+import { useEffect, useMemo, useRef } from 'react';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Environment, Lightformer, MapControls } from '@react-three/drei';
 import { NoToneMapping, Vector3 } from 'three';
 import { Buildings } from './Buildings';
@@ -9,6 +9,9 @@ import { Pedestrians } from './Pedestrians';
 import { Props } from './Props';
 import { LivingWall } from './LivingWall';
 import { Station } from './Station';
+import { Traffic } from './Vehicles';
+import { createSimulation } from './world';
+import type { Simulation } from '@/sim/simulation';
 import { LOOKS, type Weather } from '@/weather/weather';
 import { Clouds, Rain } from '@/weather/Weather';
 
@@ -23,6 +26,7 @@ const VIEW_DISTANCE = 255;
 
 export function Scene({ weather }: { weather: Weather }) {
   const look = LOOKS[weather];
+  const simulation = useMemo(() => createSimulation(), []);
   return (
     <Canvas
       shadows
@@ -83,7 +87,9 @@ export function Scene({ weather }: { weather: Weather }) {
       <Props />
       <Clouds look={look} />
       {look.rain && <Rain />}
-      <Pedestrians />
+      <Simulate simulation={simulation} />
+      <Pedestrians simulation={simulation} />
+      <Traffic simulation={simulation} />
       <Station />
       <LivingWall />
 
@@ -156,4 +162,11 @@ function viewFromUrl() {
     position: [x, y, z] as [number, number, number],
     target: [tx, ty, tz] as [number, number, number],
   };
+}
+
+/** Steps the people and traffic on each frame, before anything is drawn. */
+function Simulate({ simulation }: { simulation: Simulation }) {
+  // Don't try to catch up after the tab has been in the background.
+  useFrame((_, delta) => simulation.update(Math.min(delta, 0.1)), -1);
+  return null;
 }

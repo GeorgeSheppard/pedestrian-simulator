@@ -17,6 +17,8 @@ export interface Pedestrian {
   goal: Goal;
   /** Seconds left looking in a shop window. */
   dwell: number;
+  /** Whether they're standing at the kerb, waiting to cross. */
+  waiting: boolean;
   /** 0 when absent, 1 when fully there; people fade in and out at the ends of their walks. */
   presence: number;
   leaving: boolean;
@@ -30,12 +32,19 @@ export interface CrowdOptions {
   network: WalkNetwork;
   /** Nodes on the edge of the area, where people walk in and out of view. */
   entrances: readonly number[];
-  /** Nodes at the tube station's entrances. */
+  /** Nodes inside the tube station, past the ticket gates, where people heading in go. */
   station: readonly number[];
+  /** Nodes past the gates where people off a train come from; the same as `station` if not set. */
+  stationExits?: readonly number[];
   /** Nodes outside shops. */
   shops: readonly number[];
   /** How many people to keep in the scene. */
   population: number;
+  /**
+   * Whether someone may take a step from one point to the next, such as off the kerb into the
+   * road. If not, they wait where they are.
+   */
+  mayStep?: (from: Vec2, to: Vec2) => boolean;
   random?: () => number;
 }
 
@@ -52,9 +61,11 @@ const TRAIN_UNLOADING_SECONDS = 10;
 /**
  * People walking around the network by a few simple rules:
  *
- * - They turn up at the edges of the area, or come out of the station when a train arrives.
+ * - They turn up at the edges of the area, or come up through the station's gates when a train
+ *   arrives.
  * - Each picks somewhere to go: off the other side of the area, into the station, or to a shop.
  * - They take the shortest route, keeping to their own lane, and step around anyone too close.
+ * - They wait at the kerb when stepping into the road isn't safe.
  * - At a shop they look in the window for a few seconds, then head off somewhere else.
  */
 export class Crowd {
@@ -102,7 +113,8 @@ export class Crowd {
   }
 
   private spawnNewArrivals(dt: number) {
-    const { population, entrances, station } = this.options;
+    const { population, entrances } = this.options;
+    const station = this.options.stationExits ?? this.options.station;
 
     this.spawnBudget += (dt * population) / AVERAGE_VISIT_SECONDS;
     while (this.spawnBudget >= 1) {
@@ -141,6 +153,7 @@ export class Crowd {
       next: 1,
       goal,
       dwell: 0,
+      waiting: false,
       presence: 0,
       leaving: false,
       stride: this.random() * Math.PI * 2,
@@ -213,8 +226,13 @@ export class Crowd {
     velocity[0] += push[0];
     velocity[1] += push[1];
 
-    person.position[0] += velocity[0] * dt;
-    person.position[1] += velocity[1] * dt;
+    const next: Vec2 = [
+      person.position[0] + velocity[0] * dt,
+      person.position[1] + velocity[1] * dt,
+    ];
+    person.waiting = !!this.options.mayStep && !this.options.mayStep(person.position, next);
+    if (person.waiting) return;
+    person.position = next;
     person.heading = turnTowards(
       person.heading,
       Math.atan2(velocity[1], velocity[0]),
@@ -232,11 +250,14 @@ export class Crowd {
     }
   }
 
-  /** A push away from anyone inside this person's personal space. */
+  /**
+   * A push away from anyone inside this person's personal space. People waiting at the kerb make
+   * way, so anyone stepping up out of the road can always get past them.
+   */
   private separation(person: Pedestrian): Vec2 {
     const push: Vec2 = [0, 0];
     for (const other of this.pedestrians) {
-      if (other === person || other.leaving) continue;
+      if (other === person || other.leaving || other.waiting) continue;
       const dx = person.position[0] - other.position[0];
       const dz = person.position[1] - other.position[1];
       const d = Math.hypot(dx, dz);

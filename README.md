@@ -50,6 +50,23 @@ The details come from photos of the junction:
   station's map board, a row of timber planters down the station side of James Street with a
   no-entry sign, more planters at Regal House's corner, and pedicabs waiting outside.
 
+### People and traffic
+
+The simulation (`src/sim/`) runs the crowd and Long Acre's traffic together:
+
+- **People** turn up at the edges of the area, walk to shops, off the other side, or into the
+  station: in through the two open bays off Long Acre, across the booking hall and through the
+  gates at the back, down to the lifts. People off a train come up through those gates, or out of
+  the exits on James Street.
+- **Traffic** runs one way along a single lane down the middle of Long Acre, between the loading
+  bays: black cabs, cars and vans, each at its own speed, keeping a gap to the one in front, with
+  brake lights as they slow.
+- **Taking turns**: drivers stop for anyone on or waiting at the zebra crossing, and for anyone in
+  the carriageway ahead. People wait at the kerb rather than step out in front of a moving
+  vehicle, wanting a bigger gap where there's no zebra. Covent Garden's crowds never stop coming,
+  so a driver who's waited a while edges across once the people already on the crossing are clear,
+  and those still at the kerb let them go.
+
 ### Weather
 
 The picker in the corner switches between sunny, cloudy and rain (`src/weather/`). Faceted clouds

@@ -435,6 +435,52 @@ for (const road of roads.filter((r) => r.kind === 'carriageway')) {
   }
 }
 
+// OpenStreetMap's pavements along Long Acre run closer to its centre line than the carriageway is
+// drawn wide, so people would walk in the road. Push pavement points back off the carriageway,
+// onto the pavement beyond the kerb; the ends of crossings go just past the kerb. Points with
+// neighbours on both sides of the road are where a path crosses it, so they stay put.
+const PAVEMENT_CLEARANCE = 1.3;
+const CROSSING_CLEARANCE = 0.5;
+{
+  const carriageways = roads.filter((r) => r.kind === 'carriageway');
+  const nearestRoad = (p) => {
+    let best = null;
+    for (const road of carriageways) {
+      const dx = road.to[0] - road.from[0];
+      const dz = road.to[1] - road.from[1];
+      const length = Math.hypot(dx, dz);
+      const t = ((p[0] - road.from[0]) * dx + (p[1] - road.from[1]) * dz) / (length * length);
+      // A little past either end too, so points at the joins between segments still count.
+      if (t < -0.1 || t > 1.1) continue;
+      const across = [-dz / length, dx / length];
+      const lateral = (p[0] - road.from[0]) * across[0] + (p[1] - road.from[1]) * across[1];
+      if (!best || Math.abs(lateral) < Math.abs(best.lateral)) best = { road, across, lateral };
+    }
+    return best;
+  };
+  const neighbours = neighboursOf();
+  nodes.forEach((p, i) => {
+    const near = nearestRoad(p);
+    if (!near) return;
+    const half = near.road.width / 2;
+    const clearance = half + (crossingNodes.has(i) ? CROSSING_CLEARANCE : PAVEMENT_CLEARANCE);
+    if (Math.abs(near.lateral) >= clearance) return;
+    const sides = neighbours[i].map((n) => {
+      const other = nearestRoad(nodes[n]);
+      return other ? Math.sign(other.lateral) : 0;
+    });
+    if (sides.includes(1) && sides.includes(-1)) return;
+    const side =
+      Math.abs(near.lateral) > 0.3 ? Math.sign(near.lateral) : (sides.find((x) => x) ?? 1);
+    const shift = side * clearance - near.lateral;
+    const moved = [p[0] + near.across[0] * shift, p[1] + near.across[1] * shift];
+    // Points on the edge of the area are where people walk in, so they slide along the edge.
+    if (Math.abs(Math.abs(p[0]) - HALF_X) < 0.01) moved[0] = p[0];
+    if (Math.abs(Math.abs(p[1]) - HALF_Z) < 0.01) moved[1] = p[1];
+    nodes[i] = moved;
+  });
+}
+
 // Keep the biggest connected part of the network, so everyone can reach everywhere.
 const neighbours = neighboursOf();
 const component = new Array(nodes.length).fill(-1);

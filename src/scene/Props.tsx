@@ -8,6 +8,7 @@ import { besideRoad, faceRotation, faces, isBlocked, onFace } from './geometry';
 import { colours, flowers, leaves } from './palette';
 import { pick, seeded } from './random';
 import { PlaneTree } from './Trees';
+import { VehicleModel } from './Vehicles';
 
 const LAMP_SPACING = 16;
 const LAMP_HEIGHT = 6.4;
@@ -148,18 +149,14 @@ const pedicabs = (jamesStreet.length > 1 ? [0.25, 0.55] : [])
   .filter((spot) => spot !== null);
 
 /**
- * Street furniture and traffic: lamps, trees, planters, bollards, bins, a phone box, pedicabs, a
- * cab and a van.
+ * Street furniture: lamps, trees, planters, bollards, bins, a phone box, pedicabs, and a van
+ * unloading in one of Long Acre's loading bays.
  */
 export function Props() {
   const longAcre = carriageways;
-  const vehicle = (index: number, t: number, lane: number) => {
-    const road = longAcre[Math.min(index, longAcre.length - 1)]!;
-    return besideRoad(road.from, road.to, t, lane);
-  };
-  const cab = vehicle(1, 0.3, -1.9);
-  const van = vehicle(3, 0.6, 1.9);
-  const secondCab = vehicle(1, 0.72, 1.9);
+  // In the loading bay on the north side, between James Street and Neal Street.
+  const bay = longAcre[3] ?? longAcre[0]!;
+  const parked = besideRoad(bay.from, bay.to, 0.55, -(bay.width / 2 - 0.95));
   const phoneBox = alongStreets(longAcre, 9, (r) => r.width / 2 + 1.4, 1).find(
     (s) => s.position[0] < -10 && s.position[1] < -10
   );
@@ -200,9 +197,12 @@ export function Props() {
         />
       ))}
       {phoneBox && <PhoneBox position={phoneBox.position} heading={phoneBox.heading} />}
-      <Cab position={cab.position} heading={cab.heading} />
-      <Cab position={secondCab.position} heading={secondCab.heading + Math.PI} />
-      <Van position={van.position} heading={van.heading + Math.PI} />
+      <group
+        position={[parked.position[0], 0, parked.position[1]]}
+        rotation={[0, -parked.heading, 0]}
+      >
+        <VehicleModel kind="van" />
+      </group>
     </group>
   );
 }
@@ -332,71 +332,6 @@ function PhoneBox({ position, heading }: { position: Vec2; heading: number }) {
         <boxGeometry args={[0.97, 1.3, 0.8]} />
         <meshStandardMaterial color={colours.glass} roughness={0.2} />
       </mesh>
-    </group>
-  );
-}
-
-function Wheels({ length, width }: { length: number; width: number }) {
-  return (
-    <>
-      {[-1, 1].flatMap((end) =>
-        [-1, 1].map((side) => (
-          <mesh
-            key={`${end},${side}`}
-            position={[end * length * 0.32, 0.36, side * (width / 2 - 0.05)]}
-            rotation={[Math.PI / 2, 0, 0]}
-            castShadow
-          >
-            <cylinderGeometry args={[0.36, 0.36, 0.25, 14]} />
-            <meshStandardMaterial color={colours.tyre} roughness={0.8} />
-          </mesh>
-        ))
-      )}
-    </>
-  );
-}
-
-/** A London black cab: rounded body, tall glasshouse and a yellow "TAXI" light. */
-function Cab({ position, heading }: { position: Vec2; heading: number }) {
-  return (
-    <group position={[position[0], 0, position[1]]} rotation={[0, -heading, 0]}>
-      <RoundedBox args={[4.5, 0.9, 1.8]} radius={0.25} position={[0, 0.8, 0]} castShadow>
-        <meshStandardMaterial color={colours.cab} roughness={0.25} metalness={0.3} />
-      </RoundedBox>
-      <RoundedBox args={[2.5, 0.75, 1.7]} radius={0.2} position={[-0.25, 1.55, 0]} castShadow>
-        <meshStandardMaterial color={colours.glass} roughness={0.15} metalness={0.4} />
-      </RoundedBox>
-      <RoundedBox args={[2.4, 0.12, 1.72]} radius={0.05} position={[-0.25, 1.92, 0]} castShadow>
-        <meshStandardMaterial color={colours.cab} roughness={0.25} metalness={0.3} />
-      </RoundedBox>
-      <mesh position={[0.6, 2.05, 0]}>
-        <boxGeometry args={[0.2, 0.14, 0.5]} />
-        <meshStandardMaterial
-          color={colours.lampGlow}
-          emissive={colours.lampGlow}
-          emissiveIntensity={1.5}
-          toneMapped={false}
-        />
-      </mesh>
-      <Wheels length={4.5} width={1.8} />
-    </group>
-  );
-}
-
-function Van({ position, heading }: { position: Vec2; heading: number }) {
-  return (
-    <group position={[position[0], 0, position[1]]} rotation={[0, -heading, 0]}>
-      <RoundedBox args={[3.8, 2.3, 2]} radius={0.15} position={[-0.6, 1.5, 0]} castShadow>
-        <meshStandardMaterial color={colours.van} roughness={0.35} />
-      </RoundedBox>
-      <RoundedBox args={[1.5, 1.5, 2]} radius={0.25} position={[1.9, 1.1, 0]} castShadow>
-        <meshStandardMaterial color={colours.van} roughness={0.35} />
-      </RoundedBox>
-      <mesh position={[2.3, 1.45, 0]}>
-        <boxGeometry args={[0.8, 0.6, 1.9]} />
-        <meshStandardMaterial color={colours.glass} roughness={0.15} metalness={0.4} />
-      </mesh>
-      <Wheels length={5} width={2} />
     </group>
   );
 }
