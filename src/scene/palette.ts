@@ -3,8 +3,6 @@ export const colours = {
   background: '#e9edf0',
   pavement: '#a9a7a2',
   setts: '#8f8d89',
-  slabSide: '#cfc8bc',
-  base: '#5d6670',
   road: '#5f656d',
   kerb: '#a3a19c',
   roadMarking: '#f7f5ef',

@@ -13,8 +13,8 @@ The scene is styled as a painted scale model photographed with a shallow depth o
   of the scene melt into soft bokeh, which is what makes the eye read it as tiny. On top of that,
   the edges of the slab, where people walk in from, are always blurred, wherever the camera is
   (`src/scene/EdgeBlur.ts` works out where each pixel is on the ground from the depth buffer).
-- **A slab on a stand**: the area is cut out as a neat block, with buildings sliced off at its
-  edges, floating in a pale haze.
+- **A cut-out of the city**: the area is cut out as a neat rectangle, with buildings sliced off at
+  its edges, and the ground fading into a pale haze.
 - **Toy materials and soft light**: clean, slightly glossy colours, a soft studio environment for
   highlights, a warm low sun for long shadows, ambient occlusion in the corners, and a glow on the
   lamps.

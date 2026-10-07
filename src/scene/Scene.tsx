@@ -1,8 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
-import { ContactShadows, Environment, Lightformer, MapControls } from '@react-three/drei';
+import { Environment, Lightformer, MapControls } from '@react-three/drei';
 import { NoToneMapping, Vector3 } from 'three';
-import { area } from '@/data/area';
 import { Buildings } from './Buildings';
 import { Effects } from './Effects';
 import { Ground } from './Ground';
@@ -12,7 +11,6 @@ import { LivingWall } from './LivingWall';
 import { Station } from './Station';
 import { colours } from './palette';
 
-const [WIDTH, DEPTH] = area.size;
 /** How far the camera can wander from the centre, so the plinth always stays in view. */
 const PAN_LIMIT = 30;
 /** The junction outside the station, where the camera looks to begin with. */
@@ -83,15 +81,6 @@ export function Scene() {
       <Pedestrians />
       <Station />
       <LivingWall />
-
-      {/* A soft shadow under the plinth, as if it were standing on a table. */}
-      <ContactShadows
-        position={[0, -3.05, 0]}
-        scale={[WIDTH * 1.5, DEPTH * 1.5]}
-        far={12}
-        blur={3}
-        opacity={0.35}
-      />
 
       <MapControls
         makeDefault

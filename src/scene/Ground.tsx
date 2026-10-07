@@ -16,9 +16,8 @@ import {
   tiled,
 } from './surfaces';
 
-const SLAB_DEPTH = 1.2;
-const BASE_DEPTH = 2.4;
-const BASE_INSET = 0.6;
+/** Just thick enough to hide anything below the ground; its sides fade into the background. */
+const SLAB_DEPTH = 0.3;
 const KERB_WIDTH = 0.3;
 const KERB_HEIGHT = 0.1;
 const LINE_WIDTH = 0.12;
@@ -35,7 +34,7 @@ const carriageways = area.roads.filter((r) => r.kind === 'carriageway');
 const pedestrianStreets = area.roads.filter((r) => r.kind === 'pedestrian');
 
 /**
- * The slab the miniature stands on: paving flags on top; Long Acre's carriageway in coloured
+ * The ground the miniature stands on: paving flags on top; Long Acre's carriageway in coloured
  * concrete blocks, edged in terracotta, with granite kerbs, bay markings and the zebra crossing;
  * and the pedestrianised streets paved in setts.
  */
@@ -60,20 +59,20 @@ export function Ground() {
       <mesh position={[0, -SLAB_DEPTH / 2, 0]} receiveShadow castShadow>
         <boxGeometry args={[width, SLAB_DEPTH, depth]} />
         {/* Box faces are +x, -x, +y, -y, +z, -z. */}
-        {[0, 1, 2, 3, 4, 5].map((face) => (
-          <meshStandardMaterial
-            key={face}
-            attach={`material-${face}`}
-            color={face === 2 ? '#ffffff' : colours.slabSide}
-            map={face === 2 ? pavement : null}
-            roughness={0.85}
-          />
-        ))}
-      </mesh>
-      {/* A darker, slightly inset base, so the slab reads as a model on a stand. */}
-      <mesh position={[0, -SLAB_DEPTH - BASE_DEPTH / 2, 0]} receiveShadow>
-        <boxGeometry args={[width - BASE_INSET * 2, BASE_DEPTH, depth - BASE_INSET * 2]} />
-        <meshStandardMaterial color={colours.base} roughness={0.6} />
+        {/* Paving on top. The sides are the background's colour, unlit, so the edges of the
+            scene dissolve into the haze instead of standing on a visible block. */}
+        {[0, 1, 2, 3, 4, 5].map((face) =>
+          face === 2 ? (
+            <meshStandardMaterial
+              key={face}
+              attach={`material-${face}`}
+              map={pavement}
+              roughness={0.85}
+            />
+          ) : (
+            <meshBasicMaterial key={face} attach={`material-${face}`} color={colours.background} />
+          )
+        )}
       </mesh>
 
       <Strips roads={pedestrianStreets} y={0.004} texture={surfaces.setts} tile={SETT_TILE} />

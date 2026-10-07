@@ -27,9 +27,9 @@ export function Effects() {
     () =>
       new EdgeBlurEffect(camera, {
         halfSize: [area.size[0] / 2, area.size[1] / 2],
-        sharpFrom: 18,
-        blurredBy: 2,
-        radius: 9,
+        sharpFrom: 20,
+        blurredBy: 5,
+        radius: 14,
       }),
     [camera]
   );
