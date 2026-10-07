@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Environment, Lightformer, MapControls } from '@react-three/drei';
 import { NoToneMapping, Vector3 } from 'three';
@@ -116,17 +116,99 @@ export function Scene({
         onChange={(event) => {
           const target = (event?.target as { target?: Vector3 } | undefined)?.target;
           if (!target) return;
-          target.x = Math.max(-PAN_LIMIT, Math.min(PAN_LIMIT, target.x));
-          target.z = Math.max(-PAN_LIMIT, Math.min(PAN_LIMIT, target.z));
+          target.x = clampPan(target.x);
+          target.z = clampPan(target.z);
           target.y = 0;
         }}
       />
+
+      <KeyboardPan />
 
       {/* The second trick, with the rest of the finishing passes: a shallow depth of field. */}
       <Effects />
       <FitToScreen />
     </Canvas>
   );
+}
+
+function clampPan(value: number): number {
+  return Math.max(-PAN_LIMIT, Math.min(PAN_LIMIT, value));
+}
+
+/** Which way each key moves the camera: [right, forward]. */
+const KEYS: Record<string, [number, number]> = {
+  KeyW: [0, 1],
+  KeyS: [0, -1],
+  KeyA: [-1, 0],
+  KeyD: [1, 0],
+  ArrowUp: [0, 1],
+  ArrowDown: [0, -1],
+  ArrowLeft: [-1, 0],
+  ArrowRight: [1, 0],
+};
+/**
+ * How fast the keys move the camera, as a share of its distance from what it's looking at each
+ * second, so it feels the same zoomed in or out.
+ */
+const KEY_SPEED = 0.6;
+
+/**
+ * Moves the camera over the ground with WASD or the arrow keys, forward being the way it's facing,
+ * keeping the same angle and height.
+ */
+function KeyboardPan() {
+  const held = useRef(new Set<string>());
+
+  useEffect(() => {
+    const keys = held.current;
+    const down = (event: KeyboardEvent) => {
+      if (!(event.code in KEYS) || event.metaKey || event.ctrlKey || event.altKey) return;
+      // Leave the arrow keys to the sliders when one has focus.
+      const inControl =
+        event.target instanceof HTMLElement && event.target.closest('input, button');
+      if (inControl && event.code.startsWith('Arrow')) return;
+      keys.add(event.code);
+      if (event.code.startsWith('Arrow')) event.preventDefault();
+    };
+    const up = (event: KeyboardEvent) => keys.delete(event.code);
+    const clear = () => keys.clear();
+    window.addEventListener('keydown', down);
+    window.addEventListener('keyup', up);
+    window.addEventListener('blur', clear);
+    return () => {
+      window.removeEventListener('keydown', down);
+      window.removeEventListener('keyup', up);
+      window.removeEventListener('blur', clear);
+    };
+  }, []);
+
+  const forward = useMemo(() => new Vector3(), []);
+  const right = useMemo(() => new Vector3(), []);
+  const shift = useMemo(() => new Vector3(), []);
+  useFrame((state, delta) => {
+    const { camera } = state;
+    const controls = state.controls as { target: Vector3; update: () => void } | null;
+    if (!controls || held.current.size === 0) return;
+    let [x, y] = [0, 0];
+    for (const code of held.current) {
+      x += KEYS[code]![0];
+      y += KEYS[code]![1];
+    }
+    if (x === 0 && y === 0) return;
+    // Along the ground, the way the camera's looking, and across it.
+    camera.getWorldDirection(forward).setY(0).normalize();
+    right.set(-forward.z, 0, forward.x);
+    const distance = camera.position.distanceTo(controls.target);
+    const step = (KEY_SPEED * distance * Math.min(delta, 0.1)) / Math.hypot(x, y);
+    const target = controls.target;
+    const toX = clampPan(target.x + (right.x * x + forward.x * y) * step);
+    const toZ = clampPan(target.z + (right.z * x + forward.z * y) * step);
+    camera.position.add(shift.set(toX - target.x, 0, toZ - target.z));
+    target.set(toX, 0, toZ);
+    controls.update();
+  });
+
+  return null;
 }
 
 function startingPosition(aspect: number): [number, number, number] {

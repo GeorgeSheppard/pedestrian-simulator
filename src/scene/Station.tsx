@@ -25,7 +25,8 @@ import { rooftopClutter } from './rooftops';
  * an open ground floor of entrances and shops between piers, a cream fascia lettered with the
  * station's name, and big semicircular windows above, under a cornice. Four storeys of red brick
  * offices sit on top. Off Long Acre, two open bays lead into the booking hall, with the ticket
- * gates across the back of one side; on James Street, exit gates stand just inside the doors.
+ * gates across the back of one side; on James Street, the way out, gates stand right at the street
+ * in front of the lifts.
  */
 
 /** Heights, in metres, of the parts of the frontage. */
@@ -95,16 +96,32 @@ export function Station() {
       }),
       floor: new MeshStandardMaterial({ color: '#9f9a90', roughness: 0.45, ...layer(LAYERS.road) }),
       glass: new MeshStandardMaterial({ color: '#3a4a5a', roughness: 0.15, metalness: 0.3 }),
-      // Photos show slatted grey metal canopies over the openings.
+      // Photos show slatted grey-green metal canopies over the openings.
       awning: new MeshStandardMaterial({
-        color: '#7f8b94',
+        color: '#76827b',
         roughness: 0.5,
         metalness: 0.3,
         side: DoubleSide,
       }),
-      gate: new MeshStandardMaterial({ color: '#4d545c', roughness: 0.4, metalness: 0.4 }),
+      gate: new MeshStandardMaterial({ color: '#3f454c', roughness: 0.4, metalness: 0.4 }),
       reader: new MeshStandardMaterial({ color: colours.yellowLine, roughness: 0.4 }),
-      paddle: new MeshStandardMaterial({ color: '#d63b2f', roughness: 0.35 }),
+      // The gates' glowing blue end panels, and their clear glass paddles.
+      light: new MeshStandardMaterial({
+        color: '#3d7fe0',
+        emissive: '#3d7fe0',
+        emissiveIntensity: 0.5,
+        roughness: 0.3,
+      }),
+      paddle: new MeshStandardMaterial({
+        color: '#c7d9e6',
+        roughness: 0.1,
+        transparent: true,
+        opacity: 0.7,
+      }),
+      // The lobby in front of the lifts behind the James Street gates: dark walls and steel doors.
+      lobby: new MeshStandardMaterial({ color: '#3a3d42', roughness: 0.7 }),
+      lift: new MeshStandardMaterial({ color: '#b9bec4', roughness: 0.3, metalness: 0.6 }),
+      noEntry: new MeshStandardMaterial({ map: createNoEntryTexture(), roughness: 0.4 }),
       step: new MeshStandardMaterial({ color: colours.yellowLine, roughness: 0.6 }),
       bracket: new MeshStandardMaterial({ color: colours.poleDark, roughness: 0.4 }),
       passage: new MeshStandardMaterial({ color: '#2b2622', roughness: 0.9 }),
@@ -223,6 +240,7 @@ export function Station() {
                       <group position={[0, 0, -EXIT_GATES]}>
                         <GateLine width={width} materials={materials} />
                       </group>
+                      <LiftLobby width={width} materials={materials} />
                     </>
                   )}
                   {use === 'hall' && <Step width={width} material={materials.step} />}
@@ -256,6 +274,12 @@ export function Station() {
                         <boxGeometry args={[width - 0.1, 0.05, 1.1]} />
                       </mesh>
                     </group>
+                  )}
+                  {use === 'exit' && wide && (
+                    // The way out is exit only: a No entry sign hangs under each canopy.
+                    <mesh position={[0, 2.78, 1.02]} material={materials.noEntry}>
+                      <planeGeometry args={[Math.min(width - 0.6, 2), 0.28]} />
+                    </mesh>
                   )}
                   {text && wide && (
                     <mesh position={[0, (OPENING + FASCIA_TOP) / 2, 0.06]}>
@@ -299,7 +323,10 @@ function Solid({
 type Materials = Record<
   | 'gate'
   | 'reader'
+  | 'light'
   | 'paddle'
+  | 'lobby'
+  | 'lift'
   | 'step'
   | 'ceiling'
   | 'floor'
@@ -373,6 +400,26 @@ function HallInterior({ hall, materials }: { hall: BookingHall; materials: Mater
   );
 }
 
+/**
+ * The back of an exit bay, in the bay's own coordinates: the dark lobby wall, with a pair of steel
+ * lift doors that people come out of.
+ */
+function LiftLobby({ width, materials }: { width: number; materials: Materials }) {
+  const back = -VESTIBULE_DEPTH + 0.01;
+  return (
+    <group>
+      <mesh position={[0, OPENING / 2, back]} material={materials.lobby}>
+        <planeGeometry args={[width, OPENING]} />
+      </mesh>
+      {[-0.55, 0.55].map((x) => (
+        <mesh key={x} position={[x * (width / 3), 1.1, back + 0.02]} material={materials.lift}>
+          <planeGeometry args={[Math.min(1.1, width / 3), 2.2]} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
 /** A line of ticket gates across `width` metres, centred on the origin, facing the street. */
 function GateLine({ width, materials }: { width: number; materials: Materials }) {
   const count = Math.max(2, Math.floor(width / 0.75) + 1);
@@ -388,6 +435,9 @@ function GateLine({ width, materials }: { width: number; materials: Materials })
             </mesh>
             <mesh position={[0, 1.03, 0.35]} material={materials.reader}>
               <boxGeometry args={[0.22, 0.06, 0.3]} />
+            </mesh>
+            <mesh position={[0, 0.6, 0.56]} material={materials.light}>
+              <planeGeometry args={[0.14, 0.6]} />
             </mesh>
             {i < count - 1 && (
               <mesh position={[spacing / 2, 0.7, 0]} material={materials.paddle}>
@@ -565,6 +615,36 @@ function createSignTexture(text: string): CanvasTexture {
         ? `600 13px system-ui, 'Helvetica Neue', Arial, sans-serif`
         : `600 ${blue ? 14 : 19}px Georgia, 'Times New Roman', serif`;
       context.fillText(text, size / 2, size / 10 + 1, size * 0.92);
+      context.restore();
+    },
+    [1, 1]
+  );
+  texture.repeat.set(1, 1);
+  texture.offset.set(0, 0);
+  return texture;
+}
+
+/** TfL's No entry sign: a red roundel with a white bar, and the words, on white. */
+function createNoEntryTexture(): CanvasTexture {
+  const texture = canvasTexture(
+    (context, size) => {
+      context.fillStyle = '#ffffff';
+      context.fillRect(0, 0, size, size);
+      // As with the fascia, draw squashed shapes that the long, thin sign stretches back out.
+      context.save();
+      context.scale(1, 7);
+      const y = size / 14;
+      context.fillStyle = colours.roundelRed;
+      context.beginPath();
+      context.arc(size * 0.3, y, 6, 0, Math.PI * 2);
+      context.fill();
+      context.fillStyle = '#ffffff';
+      context.fillRect(size * 0.3 - 4.2, y - 1.2, 8.4, 2.4);
+      context.fillStyle = '#1d1d1f';
+      context.textAlign = 'left';
+      context.textBaseline = 'middle';
+      context.font = `600 10px system-ui, 'Helvetica Neue', Arial, sans-serif`;
+      context.fillText('No entry', size * 0.3 + 10, y + 0.5, size * 0.55);
       context.restore();
     },
     [1, 1]

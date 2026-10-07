@@ -7,22 +7,20 @@ import { area } from './area';
  *
  * Photos of it show the Long Acre side open across its two bays nearest the corner, into a booking
  * hall with ticket machines and maps on the corner side and the ticket gates across the back of
- * the other side, beyond which people go down to the lifts. The James Street side has open bays
- * with exit gates just inside.
+ * the other side, beyond which people go down to the lifts. On James Street, the three bays of the
+ * long frontage are the way out, exit only, with a line of gates right at the street in each.
  */
 
 /** How deep the shallow vestibules behind the other open bays are, in metres. */
 export const VESTIBULE_DEPTH = 2.6;
 /** How deep the booking hall off Long Acre is. */
 export const HALL_DEPTH = 7.5;
-/** How far the gates in the James Street exits stand back from the frontage. */
-export const EXIT_GATES = 1.5;
+/** How far the gates in the James Street exits stand back from the frontage: hardly at all. */
+export const EXIT_GATES = 0.8;
 /** How far the booking hall's gates stand forward of its back wall. */
 export const HALL_GATES = 1.9;
 export const PIER_WIDTH = 0.75;
 const BAY_TARGET = 4.4;
-/** Bays on James Street this close to a mapped entrance, in metres, are open exits. */
-const EXIT_REACH = 4.5;
 
 export type Facing = 'north' | 'east' | 'other';
 export type BayUse = 'hall' | 'exit' | 'shop';
@@ -132,10 +130,15 @@ function findFrontages(footprint: Vec2[]): Omit<Frontage, 'uses'>[] {
 function layOut(): StationLayout | null {
   const station = area.buildings.find((b) => b.kind === 'train_station');
   if (!station) return null;
-  const mapped = area.places.filter((p) => p.kind === 'station').map((p) => p.position);
+  const found = findFrontages(station.footprint);
+  // The way out is the long frontage on James Street.
+  const exitFrontage = found.reduce<(typeof found)[number] | null>(
+    (best, f) => (f.facing === 'east' && (!best || f.length > best.length) ? f : best),
+    null
+  );
 
   let hall: BookingHall | null = null;
-  const frontages: Frontage[] = findFrontages(station.footprint).map((frontage, index) => {
+  const frontages: Frontage[] = found.map((frontage, index) => {
     const bay = frontage.length / frontage.bays;
     const uses: BayUse[] = Array.from({ length: frontage.bays }, () => 'shop');
     if (frontage.facing === 'north' && !hall && frontage.bays >= 2 && bay > 2.4) {
@@ -153,13 +156,8 @@ function layOut(): StationLayout | null {
         depth: HALL_DEPTH,
         gates: [gateBay * bay + PIER_WIDTH, (gateBay + 1) * bay - PIER_WIDTH],
       };
-    } else if (frontage.facing === 'east' && bay > 2.4) {
-      for (let i = 0; i < frontage.bays; i++) {
-        const middle = onFrontage(frontage as Frontage, (i + 0.5) * bay, 0);
-        if (mapped.some((e) => Math.hypot(e[0] - middle[0], e[1] - middle[1]) < EXIT_REACH)) {
-          uses[i] = 'exit';
-        }
-      }
+    } else if (frontage === exitFrontage && bay > 2.4) {
+      uses.fill('exit');
     }
     return { ...frontage, uses };
   });
@@ -195,8 +193,9 @@ function layOut(): StationLayout | null {
     const bay = frontage.length / frontage.bays;
     frontage.uses.forEach((use, i) => {
       if (use !== 'exit') return;
-      const pastGates = add(onFrontage(frontage, (i + 0.5) * bay, EXIT_GATES + 0.7));
-      const door = add(onFrontage(frontage, (i + 0.5) * bay, 0.4));
+      // People come up from the lifts at the back, through the gates and straight out.
+      const pastGates = add(onFrontage(frontage, (i + 0.5) * bay, VESTIBULE_DEPTH - 0.4));
+      const door = add(onFrontage(frontage, (i + 0.5) * bay, 0.2));
       const outside = add(onFrontage(frontage, (i + 0.5) * bay, -1.8));
       edges.push([pastGates, door], [door, outside]);
       doors.push(outside);

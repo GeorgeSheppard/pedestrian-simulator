@@ -24,10 +24,11 @@ The scene is styled as a painted scale model photographed with a shallow depth o
 The details come from photos of the junction:
 
 - **The station** follows Leslie Green's 1907 design: two storeys of glossy ox-blood faience, with
-  open entrances between piers (ticket gates inside, in front of the lit booking hall), green
-  awnings, a cream fascia lettered COVENT GARDEN STATION with blue UNDERGROUND panels, big
-  semicircular windows above, and roundels on brackets at the corners. Four storeys of red brick
-  offices with white windows sit on top.
+  open entrances between piers off Long Acre (ticket gates inside, in front of the lit booking
+  hall), and the way out on James Street, exit only: three bays with lines of gates right at the
+  street and No entry signs under grey-green canopies. Over them run a cream fascia lettered
+  COVENT GARDEN STATION with blue UNDERGROUND panels, then big semicircular windows, with roundels
+  on brackets at the corners. Four storeys of red brick offices with white windows sit on top.
 - **The other buildings** take their style from OpenStreetMap's `building:material` and
   `building:colour` tags where they're set (brick, stucco, stone), with a whole number of storeys
   fitted to each from `building:levels`: London stock and red brick terraces in stretcher
@@ -56,8 +57,8 @@ The simulation (`src/sim/`) runs the crowd and Long Acre's traffic together:
 
 - **People** turn up at the edges of the area and walk off the other side, into a shop, or into
   the station: in through the two open bays off Long Acre, across the booking hall and through the
-  gates at the back, down to the lifts. People off a train come up through those gates, or out of
-  the exits on James Street. Each shop has a lit doorway on its street front; shoppers go in, stay
+  gates at the back, down to the lifts. Every half minute to a minute a lift-load of people off
+  a train comes up, mostly out through the gates on James Street, some through the booking hall. Each shop has a lit doorway on its street front; shoppers go in, stay
   a while, and come back out to carry on.
 - **Different paces**: some stroll, most walk, and some hurry (more so to and from the trains).
   About a third come in twos, threes or fours, walking side by side at the group's easy pace,
@@ -85,6 +86,7 @@ the traffic is (up to 12 vehicles on Long Acre at once). The crowd and traffic e
 rather than jumping: extra people head off and fewer new ones turn up, or the other way round. Add
 `?people=300` or `?traffic=10` to the URL to start with those.
 
+Move around with WASD or the arrow keys, or by dragging; scroll to zoom, and right-drag to turn.
 Add `?view=x,y,z,targetX,targetY,targetZ` to the URL to open the scene at a particular camera
 position and target, in metres, to share an angle.
 

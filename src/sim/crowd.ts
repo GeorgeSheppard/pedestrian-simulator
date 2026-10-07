@@ -62,9 +62,13 @@ const MAX_LANE_OFFSET = 1;
 const SHOPPING_SECONDS: [number, number] = [10, 40];
 /** Roughly how long a person spends in the scene, which sets how often new people turn up. */
 const AVERAGE_VISIT_SECONDS = 45;
-const TRAIN_INTERVAL_SECONDS: [number, number] = [40, 80];
-const TRAIN_PASSENGERS: [number, number] = [8, 18];
+/** How often a lift-load of people comes up from the trains, and how many, in a usual crowd. */
+const TRAIN_INTERVAL_SECONDS: [number, number] = [30, 60];
+const TRAIN_PASSENGERS: [number, number] = [12, 24];
+/** The size of crowd those numbers are for: a smaller or bigger one has fewer or more off trains. */
+const TRAIN_CROWD = 170;
 const TRAIN_UNLOADING_SECONDS = 10;
+const FIRST_TRAIN_SECONDS: [number, number] = [2, 6];
 
 /**
  * Walking paces, in metres per second, and how common each is: tourists stroll, most people walk,
@@ -121,7 +125,8 @@ export class Crowd {
     this.options = options;
     this.random = options.random ?? Math.random;
     this.population = options.population;
-    this.untilTrain = this.between(...TRAIN_INTERVAL_SECONDS) / 2;
+    // The first lift-load comes up soon after the scene opens.
+    this.untilTrain = this.between(...FIRST_TRAIN_SECONDS);
   }
 
   /** Fills the scene straight away, with people part-way along their walks. */
@@ -179,7 +184,9 @@ export class Crowd {
     this.untilTrain -= dt;
     if (this.untilTrain <= 0) {
       this.untilTrain = this.between(...TRAIN_INTERVAL_SECONDS);
-      this.trainPassengers += Math.round(this.between(...TRAIN_PASSENGERS));
+      this.trainPassengers += Math.round(
+        (this.between(...TRAIN_PASSENGERS) * population) / TRAIN_CROWD
+      );
     }
     if (this.trainPassengers > 0) {
       this.trainBudget += (dt * TRAIN_PASSENGERS[1]) / TRAIN_UNLOADING_SECONDS;

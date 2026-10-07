@@ -1,3 +1,4 @@
+import type { Vec2 } from '@/sim/network';
 import { stationLayout } from '@/data/station';
 import { insidePolygon } from './geometry';
 import { createSimulation } from './world';
@@ -20,6 +21,16 @@ describe('the street outside Covent Garden station', () => {
   let groups = 0;
   let spread = 0;
   const wasActive = sim.traffic.vehicles.map((v) => v.active);
+  // People seen behind the James Street gates, and those of them seen out on the street after.
+  const exitFrontage = stationLayout!.frontages.find((f) => f.uses.includes('exit'))!;
+  const behindExitGates = (point: Vec2) => {
+    const out =
+      (point[0] - exitFrontage.from[0]) * exitFrontage.normal[0] +
+      (point[1] - exitFrontage.from[1]) * exitFrontage.normal[1];
+    return insidePolygon(point, footprint) && out > -3;
+  };
+  const cameUp = new Set<object>();
+  const cameOut = new Set<object>();
 
   for (let i = 0; i < 240 * 30; i++) {
     sim.update(1 / 30);
@@ -38,6 +49,10 @@ describe('the street outside Covent Garden station', () => {
       wasActive[j] = v.active;
     });
     if (sim.crowd.pedestrians.some((p) => insidePolygon(p.position, footprint))) insideStation++;
+    for (const p of sim.crowd.pedestrians) {
+      if (behindExitGates(p.position)) cameUp.add(p);
+      else if (cameUp.has(p) && !insidePolygon(p.position, footprint)) cameOut.add(p);
+    }
     if (sim.crowd.pedestrians.some((p) => p.indoors > 0)) shopping++;
     const companions = sim.crowd.pedestrians.filter(
       (p) => p.leader && !p.leaving && p.indoors <= 0
@@ -82,5 +97,11 @@ describe('the street outside Covent Garden station', () => {
 
   it('has people walking into and out of the station', () => {
     expect(insideStation).toBeGreaterThan(240 * 30 * 0.5);
+  });
+
+  it('has people off the trains coming out through the James Street gates', () => {
+    // A lift-load every 30 to 60 s, most of them out this way.
+    expect(exitFrontage.uses.every((use) => use === 'exit')).toBe(true);
+    expect(cameOut.size).toBeGreaterThan(40);
   });
 });
