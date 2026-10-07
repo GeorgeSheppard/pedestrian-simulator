@@ -50,6 +50,13 @@ The details come from photos of the junction:
   station's map board, a row of timber planters down the station side of James Street with a
   no-entry sign, more planters at Regal House's corner, and pedicabs waiting outside.
 
+### Weather
+
+The picker in the corner switches between sunny, cloudy and rain (`src/weather/`). Faceted clouds
+drift over the model on the wind, casting moving shadows; cloudier skies dim and cool the sun and
+grey the haze; and rain falls in slanting streaks. Add `?weather=cloudy` or `?weather=rain` to the
+URL to open in that weather.
+
 Add `?view=x,y,z,targetX,targetY,targetZ` to the URL to open the scene at a particular camera
 position and target, in metres, to share an angle.
 

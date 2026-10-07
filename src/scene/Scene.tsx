@@ -9,7 +9,8 @@ import { Pedestrians } from './Pedestrians';
 import { Props } from './Props';
 import { LivingWall } from './LivingWall';
 import { Station } from './Station';
-import { colours } from './palette';
+import { LOOKS, type Weather } from '@/weather/weather';
+import { Clouds, Rain } from '@/weather/Weather';
 
 /** How far the camera can wander from the centre, so the plinth always stays in view. */
 const PAN_LIMIT = 30;
@@ -20,7 +21,8 @@ const VIEW_DIRECTION = new Vector3(0.68, 0.71, -0.18).normalize();
 /** How far away the camera starts on a landscape screen, in metres. */
 const VIEW_DISTANCE = 255;
 
-export function Scene() {
+export function Scene({ weather }: { weather: Weather }) {
+  const look = LOOKS[weather];
   return (
     <Canvas
       shadows
@@ -30,11 +32,11 @@ export function Scene() {
       // Tone mapping happens in the effect stack instead, after the blur.
       gl={{ toneMapping: NoToneMapping }}
     >
-      <color attach="background" args={[colours.background]} />
-      <fog attach="fog" args={[colours.background, 380, 900]} />
+      <color attach="background" args={[look.background]} />
+      <fog attach="fog" args={[look.background, ...look.fog]} />
 
       {/* Soft studio light all round, for the gentle highlights on painted and plastic surfaces. */}
-      <Environment resolution={256} environmentIntensity={0.6}>
+      <Environment resolution={256} environmentIntensity={look.environment}>
         <Lightformer
           form="rect"
           intensity={3}
@@ -58,12 +60,13 @@ export function Scene() {
           scale={[60, 20, 1]}
         />
       </Environment>
-      <hemisphereLight args={['#f4f7ff', '#d9cfbf', 1]} />
-      {/* A warm, low-ish sun from the east, so streets get long shadows across them. */}
+      <hemisphereLight args={[look.sky.colour, '#d9cfbf', look.sky.intensity]} />
+      {/* A low-ish sun from the east, so streets get long shadows across them: warm and strong on
+          a sunny day, pale and weak through cloud. */}
       <directionalLight
         position={[120, 110, -20]}
-        color="#fff1dc"
-        intensity={2.5}
+        color={look.sun.colour}
+        intensity={look.sun.intensity}
         castShadow
         shadow-mapSize={[2048, 2048]}
         shadow-camera-left={-80}
@@ -75,9 +78,11 @@ export function Scene() {
         shadow-normalBias={0.04}
       />
 
-      <Ground />
+      <Ground background={look.background} />
       <Buildings />
       <Props />
+      <Clouds look={look} />
+      {look.rain && <Rain />}
       <Pedestrians />
       <Station />
       <LivingWall />

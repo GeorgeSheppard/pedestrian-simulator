@@ -38,7 +38,7 @@ const pedestrianStreets = area.roads.filter((r) => r.kind === 'pedestrian');
  * concrete blocks, edged in terracotta, with granite kerbs, bay markings and the zebra crossing;
  * and the pedestrianised streets paved in setts.
  */
-export function Ground() {
+export function Ground({ background }: { background: string }) {
   const [width, depth] = area.size;
   const surfaces = useMemo(
     () => ({
@@ -70,7 +70,7 @@ export function Ground() {
               roughness={0.85}
             />
           ) : (
-            <meshBasicMaterial key={face} attach={`material-${face}`} color={colours.background} />
+            <meshBasicMaterial key={face} attach={`material-${face}`} color={background} />
           )
         )}
       </mesh>

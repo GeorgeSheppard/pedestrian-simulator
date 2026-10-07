@@ -1,6 +1,5 @@
 /** The scene's colours: clean, slightly chalky tones, like a painted model. */
 export const colours = {
-  background: '#e9edf0',
   pavement: '#a9a7a2',
   setts: '#8f8d89',
   road: '#5f656d',
