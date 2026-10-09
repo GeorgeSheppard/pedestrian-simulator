@@ -45,3 +45,94 @@ export function besideRoad(from: Vec2, to: Vec2, t: number, side: number) {
   ];
   return { position, heading: Math.atan2(dz, dx), length };
 }
+
+/** The convex hull of some points, by Andrew's monotone chain. */
+export function convexHull(points: Vec2[]): Vec2[] {
+  const sorted = [...points].sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  const cross = (o: Vec2, a: Vec2, b: Vec2) =>
+    (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const half = (list: Vec2[]) => {
+    const hull: Vec2[] = [];
+    for (const p of list) {
+      while (hull.length >= 2 && cross(hull[hull.length - 2]!, hull[hull.length - 1]!, p) <= 0) {
+        hull.pop();
+      }
+      hull.push(p);
+    }
+    hull.pop();
+    return hull;
+  };
+  return [...half(sorted), ...half([...sorted].reverse())];
+}
+
+/** How much of its convex hull a polygon fills: 1 for a convex shape, less for L-shapes and notches. */
+export function convexity(points: Vec2[]): number {
+  const hull = polygonArea(convexHull(points));
+  return hull === 0 ? 0 : polygonArea(points) / hull;
+}
+
+export interface Face {
+  /** The ends of the wall, ordered so that `normal` points to the left of `from` → `to`. */
+  from: Vec2;
+  to: Vec2;
+  length: number;
+  /** Unit vector pointing out of the building. */
+  normal: Vec2;
+  /** Whether there's open ground in front of the wall, rather than another building. */
+  street: boolean;
+}
+
+/** The walls of a footprint, each with which way is out, and whether it faces the street. */
+export function faces(footprint: Vec2[]): Face[] {
+  return footprint.map((a, i) => {
+    const b = footprint[(i + 1) % footprint.length]!;
+    const length = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    let normal: Vec2 = [-(b[1] - a[1]) / length, (b[0] - a[0]) / length];
+    const middle: Vec2 = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+    let [from, to] = [a, b];
+    if (insidePolygon([middle[0] + normal[0], middle[1] + normal[1]], footprint)) {
+      normal = [-normal[0], -normal[1]];
+      [from, to] = [b, a];
+    }
+    const street = !isBlocked([middle[0] + normal[0] * 3, middle[1] + normal[1] * 3], 0.5);
+    return { from, to, length, normal, street };
+  });
+}
+
+/** A point on a wall: `along` metres from its start, `out` metres in front of it. */
+export function onFace(face: Face, along: number, out: number): Vec2 {
+  const t = along / face.length;
+  return [
+    face.from[0] + (face.to[0] - face.from[0]) * t + face.normal[0] * out,
+    face.from[1] + (face.to[1] - face.from[1]) * t + face.normal[1] * out,
+  ];
+}
+
+/** The rotation about y that turns a box's x axis along the wall. */
+export function faceRotation(face: Face): number {
+  return -Math.atan2(face.to[1] - face.from[1], face.to[0] - face.from[0]);
+}
+
+/** The part of a polygon where `normal · point <= offset`, by Sutherland–Hodgman. */
+export function clipHalfPlane(points: Vec2[], normal: Vec2, offset: number): Vec2[] {
+  const side = (p: Vec2) => normal[0] * p[0] + normal[1] * p[1] - offset;
+  const out: Vec2[] = [];
+  points.forEach((current, i) => {
+    const previous = points[(i + points.length - 1) % points.length]!;
+    const [a, b] = [side(previous), side(current)];
+    const crossing = (): Vec2 => {
+      const t = a / (a - b);
+      return [
+        previous[0] + (current[0] - previous[0]) * t,
+        previous[1] + (current[1] - previous[1]) * t,
+      ];
+    };
+    if (b <= 0) {
+      if (a > 0) out.push(crossing());
+      out.push(current);
+    } else if (a <= 0) {
+      out.push(crossing());
+    }
+  });
+  return out;
+}

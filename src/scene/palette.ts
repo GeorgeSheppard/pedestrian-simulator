@@ -1,12 +1,9 @@
 /** The scene's colours: clean, slightly chalky tones, like a painted model. */
 export const colours = {
-  background: '#e9edf0',
-  pavement: '#cdc6b9',
-  setts: '#beb4a3',
-  slabSide: '#cfc8bc',
-  base: '#5d6670',
+  pavement: '#a9a7a2',
+  setts: '#8f8d89',
   road: '#5f656d',
-  kerb: '#ece8df',
+  kerb: '#a3a19c',
   roadMarking: '#f7f5ef',
   yellowLine: '#f2c230',
   poleDark: '#26282b',
@@ -18,6 +15,7 @@ export const colours = {
   shopGlow: '#f3cf8d',
   slate: '#66707c',
   chimney: '#a5644d',
+  rooflight: '#8ea2b4',
   lamp: '#23302b',
   lampGlow: '#ffd68a',
   foliage: '#6f9a55',
@@ -34,19 +32,6 @@ export const colours = {
   tyre: '#26282b',
   glass: '#2f3b47',
 };
-
-/** Facade colours for ordinary buildings: brick, London stock brick, stucco and stone. */
-export const facades = [
-  '#b65c41',
-  '#c79a68',
-  '#efe6d4',
-  '#e4d6ba',
-  '#9db59f',
-  '#d9c49b',
-  '#9a5039',
-  '#d3d8da',
-  '#e8cfae',
-];
 
 /** Painted shopfronts. */
 export const fascias = [
@@ -80,3 +65,8 @@ export const clothes = [
 ];
 
 export const skin = ['#f1d0b5', '#e2b48f', '#c68f66', '#8d5a3b', '#5e3a26'];
+
+/** Leaf greens, from shady to sunlit. */
+export const leaves = ['#4b6a30', '#5a7d37', '#6b8d42', '#3f5c2a', '#7a9a4c', '#86a656'];
+/** Flowers among the leaves: red, pink, mauve and a little yellow. */
+export const flowers = ['#c4425a', '#d77fa1', '#8c5a9e', '#e2a43b', '#f0f0ea'];

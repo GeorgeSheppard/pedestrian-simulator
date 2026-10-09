@@ -6,6 +6,14 @@ export interface Building {
   name?: string;
   kind: string;
   height: number;
+  /** Storeys above ground, when OpenStreetMap knows. */
+  levels?: number;
+  /** What the facade is made of, when known: brick, plaster, sandstone and so on. */
+  material?: string;
+  /** The facade's colour, when known: a name like brown or white, or a hex colour. */
+  colour?: string;
+  /** A particular look, from photos, where OpenStreetMap's tags don't say enough. */
+  look?: string;
   footprint: Vec2[];
 }
 
@@ -43,10 +51,3 @@ export interface Area {
 
 /** The area around Covent Garden station, generated from OpenStreetMap by scripts/fetch-osm.mjs. */
 export const area = data as unknown as Area;
-
-const unique = (nodes: number[]) => [...new Set(nodes)];
-
-export const stationNodes = unique(
-  area.places.filter((p) => p.kind === 'station').map((p) => p.node)
-);
-export const shopNodes = unique(area.places.filter((p) => p.kind === 'shop').map((p) => p.node));

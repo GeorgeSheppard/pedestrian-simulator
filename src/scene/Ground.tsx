@@ -1,51 +1,99 @@
 import { useMemo } from 'react';
+import { RepeatWrapping, type CanvasTexture } from 'three';
 import type { Crossing, Road } from '@/data/area';
 import { area } from '@/data/area';
 import type { Vec2 } from '@/sim/network';
+import { LAYERS, type Piece, flatLayer, layer } from './flat';
 import { colours } from './palette';
+import {
+  BLOCK_TILE,
+  BORDER_TILE,
+  FLAG_TILE,
+  SETT_TILE,
+  blocksTexture,
+  borderTexture,
+  flagsTexture,
+  settsTexture,
+  tiled,
+} from './surfaces';
 
-const SLAB_DEPTH = 1.2;
-const BASE_DEPTH = 2.4;
-const BASE_INSET = 0.6;
+/** Just thick enough to hide anything below the ground; its sides fade into the background. */
+const SLAB_DEPTH = 0.3;
 const KERB_WIDTH = 0.3;
-const KERB_HEIGHT = 0.14;
+const KERB_HEIGHT = 0.1;
 const LINE_WIDTH = 0.12;
 const STRIPE_WIDTH = 0.5;
 const CROSSING_LENGTH = 3;
-const DASH = 3;
+/** The terracotta edging along each side of the carriageway. */
+const BORDER_WIDTH = 0.45;
+/** Loading bays along both sides of Long Acre, marked out in dashed white lines. */
+const BAY_WIDTH = 1.9;
+const BAY_DASH = 1.5;
+const BAY_GAP = 0.9;
 
 const carriageways = area.roads.filter((r) => r.kind === 'carriageway');
 const pedestrianStreets = area.roads.filter((r) => r.kind === 'pedestrian');
 
+// The street surfaces only depend on the map, so their pieces are worked out once.
+const settsPieces = streetPieces(pedestrianStreets);
+const roadPieces = streetPieces(carriageways);
+const edging = edgingPieces(carriageways);
+
 /**
- * The slab the miniature stands on: pavement on top, with Long Acre's carriageway, kerbs and
- * markings, and the pedestrianised streets paved in setts.
+ * The ground the miniature stands on: paving flags on top; Long Acre's carriageway in coloured
+ * concrete blocks, edged in terracotta, with granite kerbs, bay markings and the zebra crossing;
+ * and the pedestrianised streets paved in setts.
  */
-export function Ground() {
+export function Ground({ background }: { background: string }) {
   const [width, depth] = area.size;
+  const surfaces = useMemo(
+    () => ({
+      flags: flagsTexture(),
+      setts: settsTexture(),
+      blocks: blocksTexture(),
+      border: borderTexture(),
+    }),
+    []
+  );
+  const pavement = useMemo(
+    () => tiled(surfaces.flags, width, depth, FLAG_TILE),
+    [surfaces, width, depth]
+  );
 
   return (
     <group>
       <mesh position={[0, -SLAB_DEPTH / 2, 0]} receiveShadow castShadow>
         <boxGeometry args={[width, SLAB_DEPTH, depth]} />
         {/* Box faces are +x, -x, +y, -y, +z, -z. */}
-        {[0, 1, 2, 3, 4, 5].map((face) => (
-          <meshStandardMaterial
-            key={face}
-            attach={`material-${face}`}
-            color={face === 2 ? colours.pavement : colours.slabSide}
-            roughness={0.85}
-          />
-        ))}
-      </mesh>
-      {/* A darker, slightly inset base, so the slab reads as a model on a stand. */}
-      <mesh position={[0, -SLAB_DEPTH - BASE_DEPTH / 2, 0]} receiveShadow>
-        <boxGeometry args={[width - BASE_INSET * 2, BASE_DEPTH, depth - BASE_INSET * 2]} />
-        <meshStandardMaterial color={colours.base} roughness={0.6} />
+        {/* Paving on top. The sides are the background's colour, unlit, so the edges of the
+            scene dissolve into the haze instead of standing on a visible block. */}
+        {[0, 1, 2, 3, 4, 5].map((face) =>
+          face === 2 ? (
+            <meshStandardMaterial
+              key={face}
+              attach={`material-${face}`}
+              map={pavement}
+              roughness={0.85}
+            />
+          ) : (
+            <meshBasicMaterial key={face} attach={`material-${face}`} color={background} />
+          )
+        )}
       </mesh>
 
-      <Strips roads={pedestrianStreets} y={0.004} color={colours.setts} />
-      <Strips roads={carriageways} y={0.01} color={colours.road} />
+      <Surface
+        pieces={settsPieces}
+        texture={surfaces.setts}
+        tile={SETT_TILE}
+        order={LAYERS.setts}
+      />
+      <Surface
+        pieces={roadPieces}
+        texture={surfaces.blocks}
+        tile={BLOCK_TILE}
+        order={LAYERS.road}
+      />
+      <Surface pieces={edging} texture={surfaces.border} tile={BORDER_TILE} order={LAYERS.edging} />
       {carriageways.map((road) => (
         <RoadDetails key={`${road.from.join()}-${road.to.join()}`} road={road} />
       ))}
@@ -75,63 +123,70 @@ function nearCrossing(point: Vec2, distance: number) {
   );
 }
 
-/** Road segments as flat strips, with discs at the bends to fill the gaps between them. */
-function Strips({ roads, y, color }: { roads: Road[]; y: number; color: string }) {
-  const bends = useMemo(
-    () =>
-      roads.flatMap((road, i) => {
-        const next = roads[i + 1];
-        const joined = next && next.from[0] === road.to[0] && next.from[1] === road.to[1];
-        return joined ? [{ position: road.to, width: road.width }] : [];
-      }),
-    [roads]
-  );
+/** Street segments as strips, with discs at the bends to fill the gaps between them. */
+function streetPieces(roads: Road[]): Piece[] {
+  return roads.flatMap((road, i): Piece[] => {
+    const next = roads[i + 1];
+    const joined = next && next.from[0] === road.to[0] && next.from[1] === road.to[1];
+    const strip: Piece = { kind: 'strip', from: road.from, to: road.to, width: road.width };
+    return joined ? [strip, { kind: 'disc', centre: road.to, radius: road.width / 2 }] : [strip];
+  });
+}
 
+/** The terracotta edging inside both kerbs of each carriageway segment. */
+function edgingPieces(roads: Road[]): Piece[] {
+  return roads.flatMap((road) => {
+    const { across } = frame(road.from, road.to);
+    return [-1, 1].map((side): Piece => {
+      const offset = side * (road.width / 2 - BORDER_WIDTH / 2);
+      const shift = (p: Vec2): Vec2 => [p[0] + across[0] * offset, p[1] + across[1] * offset];
+      return { kind: 'strip', from: shift(road.from), to: shift(road.to), width: BORDER_WIDTH };
+    });
+  });
+}
+
+/** One flat ground layer, drawn in the given order above the paving. */
+function Surface({
+  pieces,
+  texture,
+  tile,
+  order,
+}: {
+  pieces: Piece[];
+  texture: CanvasTexture;
+  tile: number;
+  order: number;
+}) {
+  const geometry = useMemo(() => flatLayer(pieces, tile), [pieces, tile]);
+  const map = useMemo(() => {
+    // Texture coordinates are already in tiles, so the texture is used as it comes.
+    const copy = texture.clone();
+    copy.wrapS = RepeatWrapping;
+    copy.wrapT = RepeatWrapping;
+    copy.repeat.set(1, 1);
+    return copy;
+  }, [texture]);
   return (
-    <group>
-      {roads.map((road) => {
-        const { length, angle } = frame(road.from, road.to);
-        return (
-          <mesh
-            key={`${road.from.join()}-${road.to.join()}`}
-            position={[(road.from[0] + road.to[0]) / 2, y, (road.from[1] + road.to[1]) / 2]}
-            rotation={[-Math.PI / 2, 0, angle]}
-            receiveShadow
-          >
-            <planeGeometry args={[length, road.width]} />
-            <meshStandardMaterial color={color} roughness={0.9} />
-          </mesh>
-        );
-      })}
-      {bends.map(({ position, width }) => (
-        <mesh
-          key={position.join()}
-          position={[position[0], y, position[1]]}
-          rotation={[-Math.PI / 2, 0, 0]}
-          receiveShadow
-        >
-          <circleGeometry args={[width / 2, 24]} />
-          <meshStandardMaterial color={color} roughness={0.9} />
-        </mesh>
-      ))}
-    </group>
+    <mesh geometry={geometry} receiveShadow>
+      <meshStandardMaterial map={map} roughness={0.9} {...layer(order)} />
+    </mesh>
   );
 }
 
-/** Raised kerbs, double yellow lines along both edges, and a dashed line down the middle. */
+/** Granite kerbs, and the dashed white lines marking out loading bays along both sides. */
 function RoadDetails({ road }: { road: Road }) {
   const { length, angle, direction, across } = frame(road.from, road.to);
   const middle: Vec2 = [(road.from[0] + road.to[0]) / 2, (road.from[1] + road.to[1]) / 2];
-  const at = (along: number, side: number): [number, number, number] => [
+  const at = (along: number, side: number, y = 0): [number, number, number] => [
     middle[0] + direction[0] * along + across[0] * side,
-    0,
+    y,
     middle[1] + direction[1] * along + across[1] * side,
   ];
 
   const dashes: number[] = [];
-  for (let along = -length / 2 + DASH / 2; along < length / 2 - DASH / 2; along += DASH * 2) {
+  for (let along = -length / 2 + BAY_DASH / 2; along < length / 2; along += BAY_DASH + BAY_GAP) {
     const [x, , z] = at(along, 0);
-    if (!nearCrossing([x, z], CROSSING_LENGTH + 1)) dashes.push(along);
+    if (!nearCrossing([x, z], CROSSING_LENGTH + 2)) dashes.push(along);
   }
 
   return (
@@ -147,25 +202,16 @@ function RoadDetails({ road }: { road: Road }) {
             <boxGeometry args={[length + 0.2, KERB_HEIGHT, KERB_WIDTH]} />
             <meshStandardMaterial color={colours.kerb} roughness={0.8} />
           </mesh>
-          {[0.25, 0.5].map((inset) => (
+          {dashes.map((along) => (
             <Line
-              key={inset}
-              position={at(0, side * (road.width / 2 - inset))}
+              key={along}
+              position={at(along, side * (road.width / 2 - BAY_WIDTH))}
               angle={angle}
-              length={length}
-              color={colours.yellowLine}
+              length={BAY_DASH}
+              color={colours.roadMarking}
             />
           ))}
         </group>
-      ))}
-      {dashes.map((along) => (
-        <Line
-          key={along}
-          position={at(along, 0)}
-          angle={angle}
-          length={DASH}
-          color={colours.roadMarking}
-        />
       ))}
     </group>
   );
@@ -184,12 +230,12 @@ function Line({
 }) {
   return (
     <mesh
-      position={[position[0], 0.02, position[2]]}
+      position={[position[0], 0, position[2]]}
       rotation={[-Math.PI / 2, 0, angle]}
       receiveShadow
     >
       <planeGeometry args={[length, LINE_WIDTH]} />
-      <meshStandardMaterial color={color} roughness={0.6} />
+      <meshStandardMaterial color={color} roughness={0.6} {...layer(LAYERS.markings)} />
     </mesh>
   );
 }
@@ -204,7 +250,7 @@ function ZebraCrossing({ crossing }: { crossing: Crossing }) {
 
   return (
     <group>
-      <group position={[position[0], 0.025, position[1]]} rotation={[0, angle, 0]}>
+      <group position={[position[0], 0, position[1]]} rotation={[0, angle, 0]}>
         {Array.from({ length: stripes }, (_, i) => (
           <mesh
             key={i}
@@ -213,7 +259,11 @@ function ZebraCrossing({ crossing }: { crossing: Crossing }) {
             receiveShadow
           >
             <planeGeometry args={[CROSSING_LENGTH, STRIPE_WIDTH]} />
-            <meshStandardMaterial color={colours.roadMarking} roughness={0.6} />
+            <meshStandardMaterial
+              color={colours.roadMarking}
+              roughness={0.6}
+              {...layer(LAYERS.crossing)}
+            />
           </mesh>
         ))}
       </group>
