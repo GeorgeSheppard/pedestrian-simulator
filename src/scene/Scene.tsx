@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { Environment, Lightformer, MapControls } from '@react-three/drei';
+import { Environment, Lightformer, MapControls, PerformanceMonitor } from '@react-three/drei';
 import { MOUSE, NoToneMapping, TOUCH, Vector3 } from 'three';
 import { Buildings } from './Buildings';
 import { Effects } from './Effects';
@@ -9,6 +9,7 @@ import { Pedestrians } from './Pedestrians';
 import { Props } from './Props';
 import { LivingWall } from './LivingWall';
 import { ShopDoors } from './ShopDoors';
+import { StaticBatch } from './StaticBatch';
 import { Station } from './Station';
 import { Traffic } from './Vehicles';
 import { createSimulation } from './world';
@@ -24,6 +25,14 @@ const FOCUS: [number, number, number] = [6, 0, -4];
 const VIEW_DIRECTION = new Vector3(0.68, 0.71, -0.18).normalize();
 /** How far away the camera starts on a landscape screen, in metres. */
 const VIEW_DISTANCE = 255;
+/**
+ * The frame rates, for a screen refreshing at a given rate, below which the scene is drawn at a
+ * lower resolution, and above which it goes back up.
+ */
+const FRAME_RATE_BOUNDS = (refreshRate: number): [number, number] =>
+  refreshRate > 100 ? [75, 100] : [50, 58];
+/** How many times the resolution can change before it's only allowed to go down. */
+const RESOLUTION_CHANGES = 4;
 
 export function Scene({
   weather,
@@ -39,15 +48,35 @@ export function Scene({
   const look = LOOKS[weather];
   // Made once, starting with the crowd and traffic asked for; changes after that it eases into.
   const [simulation] = useState(() => createSimulation({ people, traffic }));
+  // Most of the cost is in the finishing passes, which work on every pixel, so on a screen that
+  // can't keep up, draw fewer of them: from a pixel per screen pixel, up to two on a sharp screen.
+  const [sharpness, setSharpness] = useState(1);
+  const resolution = useRef({ sharpness: 1, changes: 0 });
+  const adaptResolution = useCallback(({ factor }: { factor: number }) => {
+    const current = resolution.current;
+    // After going back and forth a few times it only goes down, so it can't keep flipping
+    // between two, re-allocating every buffer each time.
+    if (factor === current.sharpness) return;
+    if (factor > current.sharpness && current.changes >= RESOLUTION_CHANGES) return;
+    current.sharpness = factor;
+    current.changes++;
+    setSharpness(factor);
+  }, []);
   return (
     <Canvas
       shadows
-      dpr={[1, 2]}
+      dpr={[1, 1 + sharpness]}
       // A long lens from high up flattens perspective, the first trick in making it look small.
       camera={{ position: startingPosition(1), fov: 20, near: 10, far: 1000 }}
       // Tone mapping happens in the effect stack instead, after the blur.
       gl={{ toneMapping: NoToneMapping }}
     >
+      <PerformanceMonitor
+        factor={1}
+        step={0.25}
+        bounds={FRAME_RATE_BOUNDS}
+        onChange={adaptResolution}
+      />
       <color attach="background" args={[look.background]} />
       <fog attach="fog" args={[look.background, ...look.fog]} />
 
@@ -94,17 +123,20 @@ export function Scene({
         shadow-normalBias={0.04}
       />
 
-      <Ground background={look.background} />
-      <Buildings />
-      <ShopDoors />
-      <Props />
+      {/* Everything that stays put, drawn a material at a time rather than a piece at a time. */}
+      <StaticBatch>
+        <Ground background={look.background} />
+        <Buildings />
+        <ShopDoors />
+        <Props />
+        <Station />
+        <LivingWall />
+      </StaticBatch>
       <Clouds look={look} />
       {look.rain && <Rain />}
       <Simulate simulation={simulation} people={people} traffic={traffic} />
       <Pedestrians simulation={simulation} />
       <Traffic simulation={simulation} />
-      <Station />
-      <LivingWall />
 
       {/* One finger, or dragging, turns the model round the middle of the view; two fingers, or
           right-dragging, slide it about, keeping to the ground. */}
@@ -117,13 +149,7 @@ export function Scene({
         maxPolarAngle={1.2}
         minDistance={22}
         maxDistance={560}
-        onChange={(event) => {
-          const target = (event?.target as { target?: Vector3 } | undefined)?.target;
-          if (!target) return;
-          target.x = clampPan(target.x);
-          target.z = clampPan(target.z);
-          target.y = 0;
-        }}
+        onChange={keepOverPlinth}
       />
 
       <KeyboardPan />
@@ -133,6 +159,19 @@ export function Scene({
       <FitToScreen />
     </Canvas>
   );
+}
+
+/**
+ * Keeps what the camera looks at on the ground and over the plinth. It's the same function every
+ * time on purpose: the controls drop and re-add their pointer listeners whenever it changes, and
+ * doing that in the middle of a drag leaves them waiting for a release that never comes.
+ */
+function keepOverPlinth(event?: { target?: unknown }) {
+  const target = (event?.target as { target?: Vector3 } | undefined)?.target;
+  if (!target) return;
+  target.x = clampPan(target.x);
+  target.z = clampPan(target.z);
+  target.y = 0;
 }
 
 function clampPan(value: number): number {
