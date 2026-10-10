@@ -95,8 +95,7 @@ rather than jumping: extra people head off and fewer new ones turn up, or the ot
 
 Drag with one finger or the mouse to turn the model round the middle of the view, and with two
 fingers or the right mouse button (or shift and drag) to slide it about; pinch or scroll to zoom.
-WASD or the arrow keys move around too. The OpenStreetMap credit sits at the bottom of the
-controls panel.
+WASD or the arrow keys move around too.
 Add `?view=x,y,z,targetX,targetY,targetZ` to the URL to open the scene at a particular camera
 position and target, in metres, to share an angle.
 

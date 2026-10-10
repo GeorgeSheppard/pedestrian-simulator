@@ -1,5 +1,4 @@
 import { useId, useState } from 'react';
-import { area } from '@/data/area';
 import { PEOPLE_RANGE, type Settings, TRAFFIC_RANGE } from '@/settings';
 import { LOOKS, WEATHERS, type Weather } from '@/weather/weather';
 import styles from './Controls.module.css';
@@ -90,11 +89,6 @@ export function Controls({
         display={trafficLabel(settings.traffic)}
         onChange={(traffic) => set({ traffic })}
       />
-
-      {/* OpenStreetMap's licence asks for credit wherever its map data is shown. */}
-      <a className={styles.credit} href="https://www.openstreetmap.org/copyright">
-        Map data {area.attribution}
-      </a>
     </section>
   );
 }
