@@ -118,6 +118,8 @@ export class Crowd {
   private trainPassengers = 0;
   private trainBudget = 0;
   private thinBudget = 0;
+  /** Who's where, by square of the ground PERSONAL_SPACE across, as of the start of the update. */
+  private readonly grid = new Map<number, Pedestrian[]>();
   /** How many people to keep in the scene; change it and the crowd grows or thins out to match. */
   population: number;
 
@@ -160,6 +162,7 @@ export class Crowd {
   update(dt: number) {
     this.spawnNewArrivals(dt);
     this.thinOut(dt);
+    this.fillGrid();
     for (const person of this.pedestrians) this.step(person, dt);
     for (let i = this.pedestrians.length - 1; i >= 0; i--) {
       const person = this.pedestrians[i]!;
@@ -437,23 +440,48 @@ export class Crowd {
   }
 
   /**
+   * Files everyone who others need to keep their distance from by the square of ground they're
+   * on, so each person need only look at those in the squares around them rather than everyone.
+   */
+  private fillGrid() {
+    for (const cell of this.grid.values()) cell.length = 0;
+    for (const person of this.pedestrians) {
+      if (person.leaving || person.waiting || person.indoors > 0) continue;
+      const key = cellKey(cellOf(person.position[0]), cellOf(person.position[1]));
+      const cell = this.grid.get(key);
+      if (cell) cell.push(person);
+      else this.grid.set(key, [person]);
+    }
+  }
+
+  /**
    * A push away from anyone inside this person's personal space. People waiting at the kerb make
    * way, so anyone stepping up out of the road can always get past them.
    */
   private separation(person: Pedestrian): Vec2 {
     const push: Vec2 = [0, 0];
-    for (const other of this.pedestrians) {
-      if (other === person || other.leaving || other.waiting || other.indoors > 0) continue;
-      // Companions walk close together; they keep their spacing by their formation instead.
-      if (other.leader === person || person.leader === other) continue;
-      if (person.leader && person.leader === other.leader) continue;
-      const dx = person.position[0] - other.position[0];
-      const dz = person.position[1] - other.position[1];
-      const d = Math.hypot(dx, dz);
-      if (d >= PERSONAL_SPACE || d === 0) continue;
-      const strength = ((PERSONAL_SPACE - d) / PERSONAL_SPACE) * 1.5;
-      push[0] += (dx / d) * strength;
-      push[1] += (dz / d) * strength;
+    // People move a few centimetres at most during an update, so the squares filled at its start
+    // are near enough; the squares either side are searched, which covers PERSONAL_SPACE.
+    const column = cellOf(person.position[0]);
+    const row = cellOf(person.position[1]);
+    for (let i = column - 1; i <= column + 1; i++) {
+      for (let j = row - 1; j <= row + 1; j++) {
+        const cell = this.grid.get(cellKey(i, j));
+        if (!cell) continue;
+        for (const other of cell) {
+          if (other === person || other.leaving || other.waiting || other.indoors > 0) continue;
+          // Companions walk close together; they keep their spacing by their formation instead.
+          if (other.leader === person || person.leader === other) continue;
+          if (person.leader && person.leader === other.leader) continue;
+          const dx = person.position[0] - other.position[0];
+          const dz = person.position[1] - other.position[1];
+          const d = Math.hypot(dx, dz);
+          if (d >= PERSONAL_SPACE || d === 0) continue;
+          const strength = ((PERSONAL_SPACE - d) / PERSONAL_SPACE) * 1.5;
+          push[0] += (dx / d) * strength;
+          push[1] += (dz / d) * strength;
+        }
+      }
     }
     return push;
   }
@@ -486,6 +514,16 @@ export class Crowd {
   private between(min: number, max: number): number {
     return min + this.random() * (max - min);
   }
+}
+
+/** Which square of the grid a coordinate falls in, along one axis. */
+function cellOf(coordinate: number): number {
+  return Math.floor(coordinate / PERSONAL_SPACE);
+}
+
+/** One number for a square of the grid, good for coordinates within a few kilometres of the origin. */
+function cellKey(column: number, row: number): number {
+  return column * 65536 + row;
 }
 
 function add(a: Vec2, b: Vec2): Vec2 {

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { Environment, Lightformer, MapControls } from '@react-three/drei';
+import { Environment, Lightformer, MapControls, PerformanceMonitor } from '@react-three/drei';
 import { MOUSE, NoToneMapping, TOUCH, Vector3 } from 'three';
 import { Buildings } from './Buildings';
 import { Effects } from './Effects';
@@ -24,6 +24,12 @@ const FOCUS: [number, number, number] = [6, 0, -4];
 const VIEW_DIRECTION = new Vector3(0.68, 0.71, -0.18).normalize();
 /** How far away the camera starts on a landscape screen, in metres. */
 const VIEW_DISTANCE = 255;
+/**
+ * The frame rates, for a screen refreshing at a given rate, below which the scene is drawn at a
+ * lower resolution, and above which it goes back up.
+ */
+const FRAME_RATE_BOUNDS = (refreshRate: number): [number, number] =>
+  refreshRate > 100 ? [75, 100] : [50, 58];
 
 export function Scene({
   weather,
@@ -39,15 +45,26 @@ export function Scene({
   const look = LOOKS[weather];
   // Made once, starting with the crowd and traffic asked for; changes after that it eases into.
   const [simulation] = useState(() => createSimulation({ people, traffic }));
+  // Most of the cost is in the finishing passes, which work on every pixel, so on a screen that
+  // can't keep up, draw fewer of them: from a pixel per screen pixel, up to two on a sharp screen.
+  const [sharpness, setSharpness] = useState(1);
   return (
     <Canvas
       shadows
-      dpr={[1, 2]}
+      dpr={[1, 1 + sharpness]}
       // A long lens from high up flattens perspective, the first trick in making it look small.
       camera={{ position: startingPosition(1), fov: 20, near: 10, far: 1000 }}
       // Tone mapping happens in the effect stack instead, after the blur.
       gl={{ toneMapping: NoToneMapping }}
     >
+      <PerformanceMonitor
+        factor={1}
+        step={0.25}
+        bounds={FRAME_RATE_BOUNDS}
+        flipflops={4}
+        onChange={({ factor }) => setSharpness(factor)}
+        onFallback={() => setSharpness(0)}
+      />
       <color attach="background" args={[look.background]} />
       <fog attach="fog" args={[look.background, ...look.fog]} />
 

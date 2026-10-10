@@ -13,6 +13,9 @@ const BODY_CENTRE = BODY_RADIUS + BODY_LENGTH / 2;
 const HEAD_CENTRE = BODY_RADIUS * 2 + BODY_LENGTH + HEAD_RADIUS * 0.9;
 /** How high people bob with each step, in metres. */
 const BOB = 0.05;
+/** The palettes, read once rather than for every person on every frame. */
+const CLOTHES = clothes.map((colour) => new Color(colour));
+const SKIN = skin.map((colour) => new Color(colour));
 
 /** The crowd, drawn as two instanced meshes: a capsule body and a ball of a head each. */
 export function Pedestrians({ simulation }: { simulation: Simulation }) {
@@ -27,7 +30,6 @@ export function Pedestrians({ simulation }: { simulation: Simulation }) {
       rotation: new Quaternion(),
       euler: new Euler(),
       scale: new Vector3(),
-      colour: new Color(),
     }),
     []
   );
@@ -35,9 +37,10 @@ export function Pedestrians({ simulation }: { simulation: Simulation }) {
   useFrame(() => {
     if (!bodies.current || !heads.current) return;
 
-    const { matrix, position, rotation, euler, scale, colour } = scratch;
-    const people = crowd.pedestrians.slice(0, CAPACITY);
-    people.forEach((person, i) => {
+    const { matrix, position, rotation, euler, scale } = scratch;
+    const count = Math.min(crowd.pedestrians.length, CAPACITY);
+    for (let i = 0; i < count; i++) {
+      const person = crowd.pedestrians[i]!;
       const walking = person.indoors <= 0 && !person.leaving && !person.waiting;
       const lift = walking ? Math.abs(Math.sin(person.stride)) * BOB : 0;
       const sway = walking ? Math.sin(person.stride) * 0.06 : 0;
@@ -46,15 +49,15 @@ export function Pedestrians({ simulation }: { simulation: Simulation }) {
 
       position.set(person.position[0], BODY_CENTRE * person.presence + lift, person.position[1]);
       bodies.current!.setMatrixAt(i, matrix.compose(position, rotation, scale));
-      bodies.current!.setColorAt(i, colour.set(pick(clothes, person.seed)));
+      bodies.current!.setColorAt(i, pick(CLOTHES, person.seed));
 
       position.set(person.position[0], HEAD_CENTRE * person.presence + lift, person.position[1]);
       heads.current!.setMatrixAt(i, matrix.compose(position, rotation, scale));
-      heads.current!.setColorAt(i, colour.set(pick(skin, person.seed * 7.3)));
-    });
+      heads.current!.setColorAt(i, pick(SKIN, person.seed * 7.3));
+    }
 
     for (const mesh of [bodies.current, heads.current]) {
-      mesh.count = people.length;
+      mesh.count = count;
       mesh.instanceMatrix.needsUpdate = true;
       if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
     }
