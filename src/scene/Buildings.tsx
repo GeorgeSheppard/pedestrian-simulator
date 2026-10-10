@@ -80,9 +80,10 @@ export function Buildings() {
       const facade = facadeFor(building, random);
       const landmark = building.name ? LANDMARK_SHOPFRONTS[building.name] : undefined;
       // Mansards are pulled in from the walls, which folds them in on themselves on small or
-      // notched footprints, so those get flat roofs. So do the landmarks, as in photos of them.
+      // notched footprints, so those get flat roofs. So do the buildings we have photos of, as in
+      // the photos.
       const mansard =
-        !landmark &&
+        !facade.photographed &&
         polygonArea(building.footprint) > MANSARD_MIN_AREA &&
         convexity(building.footprint) > 0.94 &&
         random() < 0.5;

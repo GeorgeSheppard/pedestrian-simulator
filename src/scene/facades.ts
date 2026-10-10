@@ -4,38 +4,63 @@ import { colours } from './palette';
 
 /**
  * The kinds of facade around the junction, as seen in photos of it: London stock brick and red
- * brick terraces with white sash windows, white stucco, and pale Portland stone. A few landmarks
- * have their own: Regal House's living wall, Russell & Bromley's stone with fluted pilasters,
- * Odhams Walk's dark brown 1970s brick, Boots' plain red-brown brick with dark modern windows, and
- * the Victorian red brick down James Street, patterned with cream diamonds.
+ * brick terraces with white sash windows, white stucco, pale Portland stone, and the Victorian
+ * shops and offices of red brick banded with white that line much of Long Acre. A few landmarks
+ * have their own: Regal House's living wall, Odhams Walk's dark brown 1970s brick, the plain
+ * red-brown brick with dark modern windows across from the station (Boots and Russell & Bromley),
+ * and the Victorian buff brick down James Street, latticed with red brick diamonds.
  */
 export type FacadeStyle =
-  'stock' | 'red' | 'stucco' | 'stone' | 'living' | 'deco' | 'odhams' | 'modern' | 'victorian';
+  'stock' | 'red' | 'banded' | 'stucco' | 'stone' | 'living' | 'odhams' | 'modern' | 'victorian';
 
 export interface Facade {
   style: FacadeStyle;
   /** Which of a style's window designs: 0, 1 or 2. */
   variant: number;
+  /** Whether it's the real building's look, from photos, rather than a guess. */
+  photographed?: boolean;
 }
 
 const FACADES: Record<FacadeStyle, { wall: string; trim: string; bay: number }> = {
   stock: { wall: '#b39a74', trim: '#e2ddd2', bay: 2.6 },
   red: { wall: '#a4523b', trim: '#e2ddd2', bay: 2.6 },
+  banded: { wall: '#ad5539', trim: '#eee9df', bay: 2.6 },
   stucco: { wall: '#efe9de', trim: '#dfd7c8', bay: 2.8 },
   stone: { wall: '#ddd5c3', trim: '#cfc6b2', bay: 3 },
   living: { wall: '#4f6b35', trim: '#3a2f28', bay: 2.8 },
-  deco: { wall: '#e8e2d4', trim: '#d6cfbf', bay: 3.2 },
   odhams: { wall: '#6a4536', trim: '#b9b2a4', bay: 3.4 },
   modern: { wall: '#8c4a37', trim: '#d9d3c7', bay: 3.2 },
-  victorian: { wall: '#9a4532', trim: '#e6dcc4', bay: 2.8 },
+  victorian: { wall: '#c8a873', trim: '#a8503a', bay: 2.8 },
 };
 
 /** Landmarks that photos show have a look of their own, by name. */
 const LANDMARK_STYLES: Record<string, FacadeStyle> = {
   'Regal House': 'living',
-  'Russell & Bromley': 'deco',
   'Odhams Walk': 'odhams',
+  // Both in 107-115 Long Acre, across from the station.
   Boots: 'modern',
+  'Russell & Bromley': 'modern',
+};
+
+/**
+ * Other buildings whose fronts photos show (on Geograph and Wikimedia Commons), by their
+ * OpenStreetMap id, rather than guessed from what the map says they're made of.
+ */
+const PHOTOGRAPHED: Record<string, Facade> = {
+  // Long Acre west of the station, along the station side: red brick banded in white, then white
+  // stucco, Muji's white stucco between red brick piers, more stucco, and plain red brick.
+  'way/173544298': { style: 'banded', variant: 0 },
+  'way/173544320': { style: 'stucco', variant: 1 },
+  'way/173544289': { style: 'banded', variant: 2 },
+  'way/173544267': { style: 'stucco', variant: 2 },
+  'way/173544293': { style: 'red', variant: 1 },
+  // 48-52 Long Acre, past Regal House: late Georgian stock brick, with six-over-six sashes under
+  // rubbed brick arches.
+  'way/173544664': { style: 'stock', variant: 0 },
+  // On James Street, south of the station: red brick banded in white, with white sashes.
+  'way/173544246': { style: 'banded', variant: 1 },
+  // Hobbs, across Long Acre: red-brown brick with dark windows.
+  'way/206248411': { style: 'modern', variant: 0 },
 };
 
 /** Picks a facade for a building from what OpenStreetMap says it's made of, or from its id. */
@@ -54,7 +79,12 @@ export function facadeFor(building: Building, random: () => number): Facade {
     const roll = random();
     style = roll < 0.35 ? 'stock' : roll < 0.65 ? 'red' : roll < 0.85 ? 'stucco' : 'stone';
   }
-  return { style, variant: Math.floor(random() * 3) };
+  const variant = Math.floor(random() * 3);
+  // Guess first even for the photographed ones, so every building draws the same random numbers
+  // after this as before.
+  const photographed = PHOTOGRAPHED[building.id];
+  if (photographed) return { ...photographed, photographed: true };
+  return { style, variant, photographed: building.look !== undefined || landmark !== undefined };
 }
 
 /**
@@ -185,7 +215,7 @@ function brickwork(pen: Pen, base: string, random: () => number, diaper?: string
       let colour = shade(base, (random() - 0.5) * 0.22);
       if (random() < 0.05) colour = shade(base, -0.28);
       if (diaper) {
-        // A lattice of diamonds in cream brick, as on the Victorian building down James Street.
+        // A lattice of diamonds in another brick, as on the Victorian building down James Street.
         const u = (x + brick / 2) / 1.4;
         const v = (y + course / 2) / 0.9;
         const a = Math.abs(((u + v) % 1) - 0.5);
@@ -208,7 +238,7 @@ function render(pen: Pen, base: string, amount: number) {
   speckle(pen.context, Math.max(pen.bay * pen.sx, pen.storey * pen.sy), base, amount);
 }
 
-type Head = 'flat' | 'segmental' | 'pointed';
+type Head = 'flat' | 'segmental' | 'pointed' | 'round';
 
 interface Opening {
   x: number;
@@ -228,6 +258,18 @@ function openingPath(pen: Pen, { x, y, w, h, head }: Opening, grow = 0, dx = 0, 
   context.beginPath();
   if (head === 'flat') {
     context.rect(left, top, right - left, bottom - top);
+    return;
+  }
+  if (head === 'round') {
+    // A semicircular head, as wide as the window, springing from its sides.
+    // The tile's stretched to a square canvas, so the circle's an ellipse in pixels.
+    const across = (right - left) / 2;
+    const up = (across / sx) * sy;
+    context.moveTo(left, bottom);
+    context.lineTo(left, top + up);
+    context.ellipse((left + right) / 2, top + up, across, up, 0, Math.PI, 0);
+    context.lineTo(right, bottom);
+    context.closePath();
     return;
   }
   const rise = (head === 'segmental' ? 0.18 : w * 0.6) * sy;
@@ -349,17 +391,48 @@ export function facadeTexture(style: FacadeStyle, storey: number, variant = 0): 
           wall,
         });
         pen.ledge(x - 0.08, top + height, w + 0.16, 0.08, trim);
-      } else if (style === 'victorian') {
-        brickwork(pen, wall, random, '#e3d3b1');
-        const opening = { ...centre(0.9), head: 'pointed' as Head };
-        // Stone bands at the floor and where the arches spring, and a stone surround.
-        pen.ledge(0, storey - 0.12, bay, 0.1, trim);
-        pen.rect(0, top + 0.5, bay, 0.08, trim);
+      } else if (style === 'banded') {
+        // Victorian shops and offices: red brick banded with white, white surrounds and two-over-two
+        // sashes. Some are mostly white stucco, with only piers of red brick between the windows.
+        if (variant === 2) {
+          render(pen, trim, 0.035);
+          for (const x of [0, bay - 0.4]) {
+            pen.context.save();
+            pen.context.beginPath();
+            pen.context.rect(x * pen.sx, 0, 0.4 * pen.sx, storey * pen.sy);
+            pen.context.clip();
+            brickwork(pen, wall, random);
+            pen.context.restore();
+          }
+        } else {
+          brickwork(pen, wall, random);
+        }
+        // A white band at the floor, and another along the window heads.
+        pen.ledge(0, storey - 0.18, bay, 0.16, trim);
+        if (variant !== 2) pen.rect(0, top - 0.2, bay, 0.12, trim);
+        const opening = { ...centre(1.05), head: (variant === 1 ? 'segmental' : 'flat') as Head };
+        const { x, w } = opening;
+        // A white surround, with a keystone.
+        context.fillStyle = shade(trim, -0.06);
+        openingPath(pen, opening, 0.11);
+        context.fill();
         context.fillStyle = trim;
-        openingPath(pen, opening, 0.1);
+        openingPath(pen, opening, 0.09);
+        context.fill();
+        pen.ledge(bay / 2 - 0.09, top - 0.3, 0.18, 0.3, shade(trim, 0.1));
+        drawWindow(pen, opening, { frame: '#f6f3ec', columns: 2, rows: 1, wall });
+        pen.ledge(x - 0.16, top + height, w + 0.32, 0.1, trim);
+      } else if (style === 'victorian') {
+        // Buff brick latticed with red brick diamonds, and round-headed windows under red brick
+        // arches, with red brick bands at the floors.
+        brickwork(pen, wall, random, trim);
+        const opening = { ...centre(0.9), head: 'round' as Head };
+        pen.ledge(0, storey - 0.12, bay, 0.1, trim);
+        context.fillStyle = trim;
+        openingPath(pen, opening, 0.12);
         context.fill();
         drawWindow(pen, opening, { frame: '#f2efe6', columns: 2, rows: 2, wall });
-        pen.ledge(opening.x - 0.12, top + height, opening.w + 0.24, 0.09, trim);
+        pen.ledge(opening.x - 0.1, top + height, opening.w + 0.2, 0.08, '#e6dcc4');
       } else if (style === 'stucco') {
         render(pen, wall, 0.035);
         // Faint lines of rustication, and a cornice along the floor.
@@ -438,16 +511,6 @@ export function facadeTexture(style: FacadeStyle, storey: number, variant = 0): 
       } else if (style === 'living') {
         // Just the planting: the windows are modelled in 3D, in LivingWall.
         foliage(context, size);
-      } else if (style === 'deco') {
-        render(pen, wall, 0.05);
-        // Fluted pilasters either side, and a big black-framed window between them.
-        for (let i = 0; i < 4; i++) {
-          pen.rect(0.06 + i * 0.07, 0, 0.015, storey, 'rgba(0, 0, 0, 0.1)');
-          pen.rect(bay - 0.08 - i * 0.07, 0, 0.015, storey, 'rgba(0, 0, 0, 0.1)');
-        }
-        const opening: Opening = { x: 0.6, y: top - 0.1, w: 2, h: height + 0.2, head: 'flat' };
-        drawWindow(pen, opening, { frame: '#25272a', columns: 2, rows: 1, wall });
-        pen.rect(1.3, top + height + 0.3, 0.6, 0.03, 'rgba(0, 0, 0, 0.12)');
       } else if (style === 'odhams') {
         brickwork(pen, wall, random);
         // A plain, wide modern window over a concrete sill band.
