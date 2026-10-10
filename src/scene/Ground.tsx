@@ -62,7 +62,8 @@ export function Ground({ background }: { background: string }) {
 
   return (
     <group>
-      <mesh position={[0, -SLAB_DEPTH / 2, 0]} receiveShadow castShadow>
+      {/* Left out of batching: its sides change colour with the weather. */}
+      <mesh position={[0, -SLAB_DEPTH / 2, 0]} receiveShadow castShadow userData={{ batch: false }}>
         <boxGeometry args={[width, SLAB_DEPTH, depth]} />
         {/* Box faces are +x, -x, +y, -y, +z, -z. */}
         {/* Paving on top. The sides are the background's colour, unlit, so the edges of the

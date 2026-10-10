@@ -9,6 +9,7 @@ import { Pedestrians } from './Pedestrians';
 import { Props } from './Props';
 import { LivingWall } from './LivingWall';
 import { ShopDoors } from './ShopDoors';
+import { StaticBatch } from './StaticBatch';
 import { Station } from './Station';
 import { Traffic } from './Vehicles';
 import { createSimulation } from './world';
@@ -111,17 +112,20 @@ export function Scene({
         shadow-normalBias={0.04}
       />
 
-      <Ground background={look.background} />
-      <Buildings />
-      <ShopDoors />
-      <Props />
+      {/* Everything that stays put, drawn a material at a time rather than a piece at a time. */}
+      <StaticBatch>
+        <Ground background={look.background} />
+        <Buildings />
+        <ShopDoors />
+        <Props />
+        <Station />
+        <LivingWall />
+      </StaticBatch>
       <Clouds look={look} />
       {look.rain && <Rain />}
       <Simulate simulation={simulation} people={people} traffic={traffic} />
       <Pedestrians simulation={simulation} />
       <Traffic simulation={simulation} />
-      <Station />
-      <LivingWall />
 
       {/* One finger, or dragging, turns the model round the middle of the view; two fingers, or
           right-dragging, slide it about, keeping to the ground. */}

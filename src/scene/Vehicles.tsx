@@ -5,6 +5,7 @@ import { type Group, MeshStandardMaterial } from 'three';
 import type { Simulation } from '@/sim/simulation';
 import type { VehicleKind } from '@/sim/traffic';
 import { colours } from './palette';
+import { StaticBatch } from './StaticBatch';
 
 /** Paint for ordinary cars, so they don't all look alike. */
 const PAINT = ['#b8bcc0', '#a8261f', '#2f4e7a', '#e8e6e0', '#3b3f45', '#5b6b4a'];
@@ -55,7 +56,9 @@ export function Traffic({ simulation }: { simulation: Simulation }) {
           }}
           visible={false}
         >
-          <VehicleModel kind={vehicle.kind} paint={PAINT[i % PAINT.length]!} brake={brakes[i]!} />
+          <StaticBatch>
+            <VehicleModel kind={vehicle.kind} paint={PAINT[i % PAINT.length]!} brake={brakes[i]!} />
+          </StaticBatch>
         </group>
       ))}
     </group>

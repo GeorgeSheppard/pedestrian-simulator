@@ -3,9 +3,10 @@ import { useFrame } from '@react-three/fiber';
 import {
   BufferAttribute,
   BufferGeometry,
-  type Group,
   IcosahedronGeometry,
+  type InstancedMesh,
   LineBasicMaterial,
+  Matrix4,
   MeshStandardMaterial,
 } from 'three';
 import { seeded } from '@/scene/random';
@@ -67,43 +68,36 @@ export function Clouds({ look }: { look: WeatherLook }) {
     });
   }, [count, scale]);
 
-  const groups = useRef<(Group | null)[]>([]);
+  // Every puff of every cloud, drawn in one go.
+  const puffCount = useMemo(() => clouds.reduce((n, cloud) => n + cloud.puffs.length, 0), [clouds]);
+  const mesh = useRef<InstancedMesh>(null);
+  const matrix = useMemo(() => new Matrix4(), []);
   useFrame(({ clock }) => {
+    if (!mesh.current) return;
     const t = clock.getElapsedTime();
-    clouds.forEach((cloud, i) => {
-      const group = groups.current[i];
-      if (!group) return;
-      group.position.set(
-        wrap(cloud.start[0] + WIND[0] * t, CLOUD_RANGE[0]),
-        cloud.start[1],
-        wrap(cloud.start[2] + WIND[1] * t, CLOUD_RANGE[1])
-      );
-    });
+    let i = 0;
+    for (const cloud of clouds) {
+      const x = wrap(cloud.start[0] + WIND[0] * t, CLOUD_RANGE[0]);
+      const z = wrap(cloud.start[2] + WIND[1] * t, CLOUD_RANGE[1]);
+      for (const { position, radius } of cloud.puffs) {
+        matrix.makeScale(radius, radius * 0.7, radius);
+        matrix.setPosition(x + position[0], cloud.start[1] + position[1], z + position[2]);
+        mesh.current.setMatrixAt(i++, matrix);
+      }
+    }
+    mesh.current.instanceMatrix.needsUpdate = true;
   });
 
   return (
-    <group>
-      {clouds.map((cloud, i) => (
-        <group
-          key={i}
-          ref={(group) => {
-            groups.current[i] = group;
-          }}
-          position={cloud.start}
-        >
-          {cloud.puffs.map((puff, j) => (
-            <mesh
-              key={j}
-              geometry={geometry}
-              material={material}
-              position={puff.position}
-              scale={[puff.radius, puff.radius * 0.7, puff.radius]}
-              castShadow
-            />
-          ))}
-        </group>
-      ))}
-    </group>
+    <instancedMesh
+      // A new one when the number of puffs changes with the weather.
+      key={puffCount}
+      ref={mesh}
+      args={[geometry, material, puffCount]}
+      castShadow
+      // They drift and wrap round, so the bounds worked out when they first appear won't do.
+      frustumCulled={false}
+    />
   );
 }
 
