@@ -93,7 +93,10 @@ the traffic is (up to 12 vehicles on Long Acre at once). The crowd and traffic e
 rather than jumping: extra people head off and fewer new ones turn up, or the other way round. Add
 `?people=300` or `?traffic=10` to the URL to start with those.
 
-Move around with WASD or the arrow keys, or by dragging; scroll to zoom, and right-drag to turn.
+Drag with one finger or the mouse to turn the model round the middle of the view, and with two
+fingers or the right mouse button (or shift and drag) to slide it about; pinch or scroll to zoom.
+WASD or the arrow keys move around too. The OpenStreetMap credit sits at the bottom of the
+controls panel.
 Add `?view=x,y,z,targetX,targetY,targetZ` to the URL to open the scene at a particular camera
 position and target, in metres, to share an angle.
 

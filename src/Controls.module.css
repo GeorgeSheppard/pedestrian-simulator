@@ -111,10 +111,23 @@
   accent-color: #3d6ad6;
 }
 
+.credit {
+  display: block;
+  margin-top: 10px;
+  font-size: 10px;
+  color: #7a808a;
+  text-decoration: none;
+}
+
+.credit:hover {
+  text-decoration: underline;
+}
+
 .option:focus-visible,
 .toggle:focus-visible,
 .close:focus-visible,
-.slider input:focus-visible {
+.slider input:focus-visible,
+.credit:focus-visible {
   outline: 2px solid #3d6ad6;
   outline-offset: 1px;
 }
