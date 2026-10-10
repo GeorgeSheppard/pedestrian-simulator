@@ -28,22 +28,29 @@ The details come from photos of the junction:
   hall), and the way out on James Street, exit only: three bays with lines of gates right at the
   street and No entry signs under grey-green canopies. Over them run a cream fascia lettered
   COVENT GARDEN STATION with blue UNDERGROUND panels, then big semicircular windows, with roundels
-  on brackets at the corners. Four storeys of red brick offices with white windows sit on top.
+  on brackets at the corners. Four storeys of red brick offices sit on top, their windows under
+  blue-and-white chequered heads.
+- **The buildings we have photos of** (on Geograph and Wikimedia Commons) are drawn as they are:
+  - Long Acre west of the station: Victorian shops and offices of red brick banded with white,
+    white stucco, Muji's white stucco between red brick piers, and plain red brick.
+  - 48-52 Long Acre, past Regal House: a late Georgian terrace of London stock brick, with
+    six-over-six sashes under rubbed brick arches.
+  - On James Street: red brick banded with white south of the station, and, opposite, the
+    Victorian building next to the Nags Head, of buff brick latticed with red brick diamonds,
+    with round-headed windows under red brick arches.
+  - Across Long Acre: Hobbs, and 107-115 (Boots, with Russell & Bromley on the Neal Street
+    corner), plain red-brown brick with dark modern windows.
 - **The other buildings** take their style from OpenStreetMap's `building:material` and
   `building:colour` tags where they're set (brick, stucco, stone), with a whole number of storeys
   fitted to each from `building:levels`: London stock and red brick terraces in stretcher
   bond with sash windows set back in their openings under rubbed-brick arches, stone lintels or
   segmental arches; white stucco with moulded architraves, hoods and balconettes; Portland stone
-  ashlar; slate mansards with dormers, and parapets and plant on flat roofs. Boots, across the
-  crossing, is plain red-brown brick with dark modern windows over its navy fascia, and the
-  Victorian building down James Street is red brick patterned with cream diamonds, with pointed
-  windows.
+  ashlar; slate mansards with dormers, and parapets and plant on flat roofs.
 - **Landmarks** around the junction have their own looks: Regal House, opposite the station, with
   the living wall planted on it in 2017 (dark bronze window columns and box windows with planted
-  trays, through planting that spills over the top); Russell & Bromley's Portland stone corner on
-  Neal Street; Odhams Walk's dark brown brick, with the big London plane in front of it on Long
-  Acre. OpenStreetMap draws a couple of these as one outline with their neighbours, so the import
-  splits them where the real buildings meet.
+  trays, through planting that spills over the top); Odhams Walk's dark brown brick, with the big
+  London plane in front of it on Long Acre. OpenStreetMap draws Boots and Russell & Bromley as
+  one outline, so the import splits them where their shops meet.
 - **The streets**: Long Acre is paved in concrete blocks of mixed greys, buffs and terracottas,
   edged in terracotta inside granite kerbs, with loading bays marked in white; the pavements are
   grey concrete flags, and James Street and Neal Street grey granite setts. Westminster lamp
@@ -86,7 +93,9 @@ the traffic is (up to 12 vehicles on Long Acre at once). The crowd and traffic e
 rather than jumping: extra people head off and fewer new ones turn up, or the other way round. Add
 `?people=300` or `?traffic=10` to the URL to start with those.
 
-Move around with WASD or the arrow keys, or by dragging; scroll to zoom, and right-drag to turn.
+Drag with one finger or the mouse to turn the model round the middle of the view, and with two
+fingers or the right mouse button (or shift and drag) to slide it about; pinch or scroll to zoom.
+WASD or the arrow keys move around too.
 Add `?view=x,y,z,targetX,targetY,targetZ` to the URL to open the scene at a particular camera
 position and target, in metres, to share an angle.
 

@@ -182,7 +182,7 @@ function isOutdoors(tags) {
  * the line where `normal · point = offset`, and gets its own name.
  */
 const SPLITS = [
-  // Boots, across the crossing from the station, and Russell & Bromley's stone corner on Neal Street.
+  // Boots, across the crossing from the station, and Russell & Bromley on the Neal Street corner.
   { id: 'way/186337095', normal: [1, 0], offset: 13, names: ['Boots', 'Russell & Bromley'] },
 ];
 /** Names for unnamed buildings that photos show are landmarks. */

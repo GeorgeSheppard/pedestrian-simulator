@@ -555,7 +555,7 @@ function createArchTexture(): CanvasTexture {
   return texture;
 }
 
-/** The red brick offices above: white windows, each with a blue-grey panel over it. */
+/** The red brick offices above: white windows, each under a band of blue and white chequers. */
 function createUpperTexture(): CanvasTexture {
   const storey = 3.25;
   return canvasTexture(
@@ -570,11 +570,14 @@ function createUpperTexture(): CanvasTexture {
       for (const x of [0.1, 0.55]) {
         const left = size * x;
         const width = size * 0.35;
-        context.fillStyle = '#4f6a8a';
-        context.fillRect(left, size * 0.1, width, size * 0.12);
-        context.fillStyle = '#9fb3c9';
-        for (let i = 0; i < 4; i++) {
-          context.fillRect(left + 3 + i * (width / 4), size * 0.13, 4, size * 0.06);
+        // Two rows of navy and white tiles, chequered, as in photos.
+        const tile = width / 12;
+        const top = size * 0.12;
+        for (let row = 0; row < 2; row++) {
+          for (let i = 0; i < 12; i++) {
+            context.fillStyle = (i + row) % 2 === 0 ? '#2c4677' : '#eef0f2';
+            context.fillRect(left + i * tile, top + row * tile, Math.ceil(tile), Math.ceil(tile));
+          }
         }
         context.fillStyle = '#f4f1ea';
         context.fillRect(left, size * 0.25, width, size * 0.55);

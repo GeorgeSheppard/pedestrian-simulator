@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Environment, Lightformer, MapControls } from '@react-three/drei';
-import { NoToneMapping, Vector3 } from 'three';
+import { MOUSE, NoToneMapping, TOUCH, Vector3 } from 'three';
 import { Buildings } from './Buildings';
 import { Effects } from './Effects';
 import { Ground } from './Ground';
@@ -106,9 +106,13 @@ export function Scene({
       <Station />
       <LivingWall />
 
+      {/* One finger, or dragging, turns the model round the middle of the view; two fingers, or
+          right-dragging, slide it about, keeping to the ground. */}
       <MapControls
         makeDefault
         target={FOCUS}
+        mouseButtons={{ LEFT: MOUSE.ROTATE, MIDDLE: MOUSE.DOLLY, RIGHT: MOUSE.PAN }}
+        touches={{ ONE: TOUCH.ROTATE, TWO: TOUCH.DOLLY_PAN }}
         minPolarAngle={0.45}
         maxPolarAngle={1.2}
         minDistance={22}
