@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Environment, Lightformer, MapControls, PerformanceMonitor } from '@react-three/drei';
 import { MOUSE, NoToneMapping, TOUCH, Vector3 } from 'three';
@@ -31,6 +31,8 @@ const VIEW_DISTANCE = 255;
  */
 const FRAME_RATE_BOUNDS = (refreshRate: number): [number, number] =>
   refreshRate > 100 ? [75, 100] : [50, 58];
+/** How many times the resolution can change before it's only allowed to go down. */
+const RESOLUTION_CHANGES = 4;
 
 export function Scene({
   weather,
@@ -49,6 +51,17 @@ export function Scene({
   // Most of the cost is in the finishing passes, which work on every pixel, so on a screen that
   // can't keep up, draw fewer of them: from a pixel per screen pixel, up to two on a sharp screen.
   const [sharpness, setSharpness] = useState(1);
+  const resolution = useRef({ sharpness: 1, changes: 0 });
+  const adaptResolution = useCallback(({ factor }: { factor: number }) => {
+    const current = resolution.current;
+    // After going back and forth a few times it only goes down, so it can't keep flipping
+    // between two, re-allocating every buffer each time.
+    if (factor === current.sharpness) return;
+    if (factor > current.sharpness && current.changes >= RESOLUTION_CHANGES) return;
+    current.sharpness = factor;
+    current.changes++;
+    setSharpness(factor);
+  }, []);
   return (
     <Canvas
       shadows
@@ -62,9 +75,7 @@ export function Scene({
         factor={1}
         step={0.25}
         bounds={FRAME_RATE_BOUNDS}
-        flipflops={4}
-        onChange={({ factor }) => setSharpness(factor)}
-        onFallback={() => setSharpness(0)}
+        onChange={adaptResolution}
       />
       <color attach="background" args={[look.background]} />
       <fog attach="fog" args={[look.background, ...look.fog]} />
@@ -138,13 +149,7 @@ export function Scene({
         maxPolarAngle={1.2}
         minDistance={22}
         maxDistance={560}
-        onChange={(event) => {
-          const target = (event?.target as { target?: Vector3 } | undefined)?.target;
-          if (!target) return;
-          target.x = clampPan(target.x);
-          target.z = clampPan(target.z);
-          target.y = 0;
-        }}
+        onChange={keepOverPlinth}
       />
 
       <KeyboardPan />
@@ -154,6 +159,19 @@ export function Scene({
       <FitToScreen />
     </Canvas>
   );
+}
+
+/**
+ * Keeps what the camera looks at on the ground and over the plinth. It's the same function every
+ * time on purpose: the controls drop and re-add their pointer listeners whenever it changes, and
+ * doing that in the middle of a drag leaves them waiting for a release that never comes.
+ */
+function keepOverPlinth(event?: { target?: unknown }) {
+  const target = (event?.target as { target?: Vector3 } | undefined)?.target;
+  if (!target) return;
+  target.x = clampPan(target.x);
+  target.z = clampPan(target.z);
+  target.y = 0;
 }
 
 function clampPan(value: number): number {
